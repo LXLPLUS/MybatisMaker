@@ -1,0 +1,158 @@
+mybatis-maker:
+
+    connect:
+        # 连接数据库的账号、密码、权限等
+        # 要求特权模式
+        address: localhost:3306
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        password: 123456
+        username: root
+        active_database: db1
+
+    sync:
+        # 侦听的数据库 + 表格
+        # 如果侦听全部，那么直接*.*
+        sync_table:
+            - "*.*"
+
+        # 不侦听的数据库
+        except_table:
+            - "sakila.*"
+            - "world.*"
+
+
+    # 代码生成的根目录
+    code-root: ./data
+    package:
+        # 生成sql的位置
+        ddl-package: sql
+        # mybatis-plus代码生成的package
+        mybatis-plus-bean-package: lxkplus.mybatis-plus
+
+    mybatis:
+        # table对应的路径
+        mybatis-bean-package: mybatis.entity
+        # mapper
+        mapper-package: mybatis.mapper
+        xml-package: mybatis.xml
+        # 是否指定JdbcType
+        jdbc_type: true
+        sql:
+            insert: true
+            deleteById: true
+            updateById: true
+            selectById: true
+            # 由于batch并不是写xml实现的，也就能搞个foreach
+            # 数据量不大的话，直接foreach偷懒就可以
+            insertList: true
+            deleteByIds: true
+            selectByIds: true
+
+        # 由数据库自动生成的时间，不在表格中管理的字段
+        # 不添加则是默认字段
+        datetime_not_show:
+            - insert_time
+            - update_time
+
+
+    mybatis-plus:
+        # 设置第一个 + 结尾为id的字段为id（mybatis-plus）
+        auto_id: true
+
+    use_lombok: true
+    # lombok注解
+    lombok:
+        - Data
+        - NoArgsConstructor
+
+    # 是否自动截取开头的特殊字符
+    trim-first:
+        - t_
+    trim-last:
+        - bak
+    # 自动生成序列化字段Serializable
+    serializable: true
+
+    swagger3_exist: true
+    # 是否生成javaDoc
+    java-doc-exist: true
+    # 支持:
+    #    String tableCatalog;
+    #    String tableSchema;
+    #    String tableName;
+    #    String columnName;
+    #    String ordinalPosition;
+    #    String columnDefault;
+    #    Boolean isNullable;
+    #    String dataType;
+    #    Integer characterMaximumLength;
+    #    Integer characterOctetLength;
+    #    Integer numericPrecision;
+    #    String numericScale;
+    #    String datetimePrecision;
+    #    String characterSetName;
+    #    String collationName;
+    #    String columnType;
+    #    String columnKey;
+    #    String extra;
+    #    String privileges;
+    #    String columnComment;
+    #    String generationExpression;
+    #    String srsId;
+    column_doc_format: |
+        @comment: {columnComment}
+        @default: {columnDefault}
+        @null: {isNullable}
+
+    # 时间格式
+    datetime-format: 'yyyy-MM-dd HH:mm:ss'
+    # 自动格式化
+    # 支持全限定名 + 缓存
+    # 缓存是tableService的simpleNameMap
+    typeMapper:
+        "BIT": 'String'
+        "FLOAT": 'BigDecimal'
+        "CHAR": 'String'
+        "TIMESTAMP": 'LocalDateTime'
+        "OTHER": 'String'
+        "UNDEFINEDTINYINT": 'Integer'
+        "REAL": 'String'
+        "VARCHAR": 'String'
+        "BINARY": 'String'
+        "BLOB": 'Blob'
+        "NVARCHAR": 'String'
+        "SMALLINT": 'Integer'
+        "DOUBLE": 'BigDecimal'
+        "LONGVARCHAR": 'String'
+        "VARBINARY": 'String'
+        "CLOB": 'String'
+        "NCHAR": 'String'
+        "INTEGER": 'Integer'
+        "NUMERIC": 'String'
+        "DATE": 'LocalDate'
+        "LONGVARBINARY": 'String'
+        "BOOLEAN": 'Boolean'
+        "NCLOB": 'String'
+        "BIGINT": 'Long'
+        "DECIMAL": 'BigDecimal'
+        TIME: 'LocalTime'
+        "NULL": 'String'
+        CURSOR: 'String'
+        TINYINT: String
+
+
+mybatis-plus:
+    configuration:
+        map-underscore-to-camel-case: true
+        # MybatisLog Free捕获日志需要的设置
+        # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+spring:
+    application:
+        name: mybatisMaker
+    datasource:
+        driver-class-name: ${mybatis-maker.connect.driver-class-name}
+        password: ${mybatis-maker.connect.password}
+        url: jdbc:mysql://${mybatis-maker.connect.address}?useSSL=false&useUnicode=true&characterEncoding=utf8&useAffectedRows=true&allowMultiQueries=true
+        username: ${mybatis-maker.connect.username}
+
+

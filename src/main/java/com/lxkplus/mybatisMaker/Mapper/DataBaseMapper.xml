@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lxkplus.mybatisMaker.Mapper.DatabaseMapper">
+
+    <resultMap id="columnMap" type="com.lxkplus.mybatisMaker.po.Column">
+        <result property="tableCatalog" column="TABLE_CATALOG" jdbcType="VARCHAR"/>
+        <result property="tableSchema" column="TABLE_SCHEMA" jdbcType="VARCHAR"/>
+        <result property="tableName" column="TABLE_NAME" jdbcType="VARCHAR"/>
+        <result property="columnName" column="COLUMN_NAME" jdbcType="VARCHAR"/>
+        <result property="ordinalPosition" column="ORDINAL_POSITION" jdbcType="INTEGER"/>
+        <result property="columnDefault" column="COLUMN_DEFAULT" jdbcType="VARCHAR"/>
+        <result property="isNullable" column="IS_NULLABLE" jdbcType="VARCHAR"/>
+        <result property="dataType" column="DATA_TYPE" jdbcType="VARCHAR"/>
+        <result property="characterMaximumLength" column="CHARACTER_MAXIMUM_LENGTH" jdbcType="BIGINT"/>
+        <result property="characterOctetLength" column="CHARACTER_OCTET_LENGTH" jdbcType="BIGINT"/>
+        <result property="numericPrecision" column="NUMERIC_PRECISION" jdbcType="BIGINT"/>
+        <result property="numericScale" column="NUMERIC_SCALE" jdbcType="BIGINT"/>
+        <result property="datetimePrecision" column="DATETIME_PRECISION" jdbcType="INTEGER"/>
+        <result property="characterSetName" column="CHARACTER_SET_NAME" jdbcType="VARCHAR"/>
+        <result property="collationName" column="COLLATION_NAME" jdbcType="VARCHAR"/>
+        <result property="columnType" column="COLUMN_TYPE" jdbcType="VARCHAR"/>
+        <result property="columnKey" column="COLUMN_KEY" jdbcType="OTHER"/>
+        <result property="extra" column="EXTRA" jdbcType="VARCHAR"/>
+        <result property="privileges" column="PRIVILEGES" jdbcType="VARCHAR"/>
+        <result property="columnComment" column="COLUMN_COMMENT" jdbcType="VARCHAR"/>
+        <result property="generationExpression" column="GENERATION_EXPRESSION" jdbcType="VARCHAR"/>
+        <result property="srsId" column="SRS_ID" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <resultMap id="InformationSchemaTablesMap" type="com.lxkplus.mybatisMaker.po.InformationSchemaTables">
+        <result property="tableCatalog" column="TABLE_CATALOG" jdbcType="VARCHAR" />
+        <result property="tableSchema" column="TABLE_SCHEMA" jdbcType="VARCHAR" />
+        <result property="tableName" column="TABLE_NAME" jdbcType="VARCHAR" />
+        <result property="tableType" column="TABLE_TYPE" jdbcType="CHAR" />
+        <result property="engine" column="ENGINE" jdbcType="VARCHAR" />
+        <result property="version" column="VERSION" jdbcType="BIGINT" />
+        <result property="rowFormat" column="ROW_FORMAT" jdbcType="CHAR" />
+        <result property="tableRows" column="TABLE_ROWS" jdbcType="BIGINT" />
+        <result property="avgRowLength" column="AVG_ROW_LENGTH" jdbcType="BIGINT" />
+        <result property="dataLength" column="DATA_LENGTH" jdbcType="BIGINT" />
+        <result property="maxDataLength" column="MAX_DATA_LENGTH" jdbcType="BIGINT" />
+        <result property="indexLength" column="INDEX_LENGTH" jdbcType="BIGINT" />
+        <result property="dataFree" column="DATA_FREE" jdbcType="BIGINT" />
+        <result property="autoIncrement" column="AUTO_INCREMENT" jdbcType="BIGINT" />
+        <result property="createTime" column="CREATE_TIME" jdbcType="TIMESTAMP" />
+        <result property="updateTime" column="UPDATE_TIME" jdbcType="TIMESTAMP" />
+        <result property="checkTime" column="CHECK_TIME" jdbcType="TIMESTAMP" />
+        <result property="tableCollation" column="TABLE_COLLATION" jdbcType="VARCHAR" />
+        <result property="checksum" column="CHECKSUM" jdbcType="BIGINT" />
+        <result property="createOptions" column="CREATE_OPTIONS" jdbcType="VARCHAR" />
+        <result property="tableComment" column="TABLE_COMMENT" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="getColumns" resultMap="columnMap">
+        SELECT TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, DATETIME_PRECISION, CHARACTER_SET_NAME, COLLATION_NAME, COLUMN_TYPE, COLUMN_KEY, EXTRA, `PRIVILEGES`, COLUMN_COMMENT, GENERATION_EXPRESSION, SRS_ID
+        FROM information_schema.`COLUMNS`
+        where TABLE_SCHEMA not in ('information_schema', 'mysql', 'sys', 'performance_schema')
+        order by TABLE_SCHEMA , TABLE_NAME , ORDINAL_POSITION;
+    </select>
+
+    <select id="getDatabaseType" resultMap="InformationSchemaTablesMap">
+        SELECT TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE, `ENGINE`, VERSION, ROW_FORMAT, TABLE_ROWS, AVG_ROW_LENGTH, DATA_LENGTH, MAX_DATA_LENGTH, INDEX_LENGTH, DATA_FREE, `AUTO_INCREMENT`, CREATE_TIME, UPDATE_TIME, CHECK_TIME, TABLE_COLLATION, CHECKSUM, CREATE_OPTIONS, TABLE_COMMENT
+        FROM information_schema.tables where TABLE_SCHEMA = #{databaseName} and TABLE_NAME = #{tableName};
+    </select>
+</mapper>
