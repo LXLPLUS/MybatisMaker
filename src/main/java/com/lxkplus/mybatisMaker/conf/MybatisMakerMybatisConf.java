@@ -8,6 +8,6 @@ import java.util.Set;
 @Data
 @ConfigurationProperties(prefix = "mybatis-maker.mybatis")
 @Component
-public class mybatisMakerMybatis {
+public class MybatisMakerMybatisConf {
     Set<String> datetimeNotShow;
 }

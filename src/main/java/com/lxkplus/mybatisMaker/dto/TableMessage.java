@@ -16,10 +16,23 @@ public class TableMessage {
     String tableName;
     String tableType;
     String DDL;
+    /**
+     * 侦听列
+     */
     List<ColumnWithJavaStatus> Columns = new ArrayList<>();
+    List<ColumnWithJavaStatus> dateTimeAutoColumns = new ArrayList<>();
     ColumnWithJavaStatus idColumn = null;
+    /**
+     * 主键类型
+     */
     IdType idType;
+    /**
+     * 表格注释
+     */
     String tableComment;
+    /**
+     * 使用引擎
+     */
     String engine;
     /**
      * 全限定名
@@ -42,11 +55,11 @@ public class TableMessage {
     Package mybatisPlusPackage;
     /**
      * mybatis path
+     * 文件地址
      */
     Path mybatisXMLPath;
-    Path mybatisBeanPath;
-    Path mybatisPath;
-    Path mybatisPlusPath;
+    Path mybatisEntityPath;
+    Path mybatisPlusEntityPath;
     Path MybatisMapperPath;
     String mapperName;
     /**

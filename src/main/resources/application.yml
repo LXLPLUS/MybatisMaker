@@ -23,6 +23,7 @@ mybatis-maker:
 
     # 代码生成的根目录
     code-root: ./data
+
     package:
         # 生成sql的位置
         ddl-package: sql
@@ -35,8 +36,6 @@ mybatis-maker:
         # mapper
         mapper-package: mybatis.mapper
         xml-package: mybatis.xml
-        # 是否指定JdbcType
-        jdbc_type: true
         sql:
             insert: true
             deleteById: true
@@ -47,18 +46,26 @@ mybatis-maker:
             insertList: true
             deleteByIds: true
             selectByIds: true
+            selectAll: true
+            selectPages: true
 
         # 由数据库自动生成的时间，不在表格中管理的字段
-        # 不添加则是默认字段
+        # 必须带默认值CURRENT_TIMESTAMP或者ON UPDATE CURRENT_TIMESTAMP
         datetime_not_show:
             - insert_time
             - update_time
+            - create_time
 
+        # 是否指定JdbcType
+        jdbc_type: true
 
     mybatis-plus:
         # 设置第一个 + 结尾为id的字段为id（mybatis-plus）
         auto_id: true
 
+
+    # 使用@Data生成
+    # 如果不指定的话，会用传统的get set方式生成
     use_lombok: true
     # lombok注解
     lombok:
@@ -139,6 +146,9 @@ mybatis-maker:
         "NULL": 'String'
         CURSOR: 'String'
         TINYINT: String
+
+    # 是否在第一次执行前删除历史数据
+    clear_history: true
 
 
 mybatis-plus:

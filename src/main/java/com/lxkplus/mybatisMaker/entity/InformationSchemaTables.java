@@ -1,4 +1,4 @@
-package com.lxkplus.mybatisMaker.po;
+package com.lxkplus.mybatisMaker.entity;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

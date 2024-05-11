@@ -2,7 +2,7 @@ HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
-!**/src/test/**/target/
+**/src/test/**
 /data/**
 
 ### STS ###
@@ -32,3 +32,4 @@ build/
 
 ### VS Code ###
 .vscode/
+/src/test/**

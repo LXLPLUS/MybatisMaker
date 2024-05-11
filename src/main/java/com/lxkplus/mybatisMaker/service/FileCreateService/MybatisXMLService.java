@@ -3,9 +3,11 @@ package com.lxkplus.mybatisMaker.service.FileCreateService;
 import com.lxkplus.mybatisMaker.conf.MybatisInterFaceConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
 import com.lxkplus.mybatisMaker.dto.TableMessage;
+import com.lxkplus.mybatisMaker.enums.Constants;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jdom2.DocType;
 import org.jdom2.Document;
@@ -96,6 +98,12 @@ public class MybatisXMLService implements FileCreateService {
 
 
     @Override
+    public void deleteFile(TableMessage tableMessage) throws IOException {
+        Path mybatisXMLPath = tableMessage.getMybatisXMLPath();
+        FileUtils.deleteDirectory(mybatisXMLPath.getParent().toFile());
+    }
+
+    @Override
     public void createFile(TableMessage table) throws IOException {
         if (!Files.exists(table.getMybatisXMLPath().getParent())) {
             Files.createDirectories(table.getMybatisXMLPath().getParent());
@@ -103,49 +111,53 @@ public class MybatisXMLService implements FileCreateService {
         Document mybatisDocument = this.createMybatisDocument(table.getMybatisMapperPackage().getPackageName() + "." + table.getMapperName());
         Element resultMap = getResultElement(table);
         mybatisDocument.getRootElement().addContent(resultMap);
-        if (mybatisInterFaceConf.isInsert()) {
+        if (mybatisInterFaceConf.isInsert()
+                && Constants.BaseTable.equals(table.getTableType())) {
             Element select = new Element("insert");
-            select.setAttribute("id", "insert");
+            select.setAttribute("id", Constants.insert);
             select.addContent(insert(table));
             mybatisDocument.getRootElement().addContent(select);
         }
-        if (mybatisInterFaceConf.isDeleteById() && table.getIdColumn() != null) {
+        if (mybatisInterFaceConf.isDeleteById() && table.getIdColumn() != null
+                && Constants.BaseTable.equals(table.getTableType())) {
             Element select = new Element("delete");
-            select.setAttribute("id", "deleteById");
+            select.setAttribute("id", Constants.deleteById);
             select.addContent(deleteByID(table));
             mybatisDocument.getRootElement().addContent(select);
         }
-        if (mybatisInterFaceConf.isUpdateById() && table.getIdColumn() != null) {
+        if (mybatisInterFaceConf.isUpdateById() && table.getIdColumn() != null
+                && Constants.BaseTable.equals(table.getTableType())) {
             Element update = new Element("update");
-            update.setAttribute("id", "updateById");
+            update.setAttribute("id", Constants.updateById);
             update.addContent(updateById(table));
             mybatisDocument.getRootElement().addContent(update);
         }
         if (mybatisInterFaceConf.isSelectById() && table.getIdColumn() != null) {
             Element selectById = new Element("select");
-            selectById.setAttribute("id", "selectById");
+            selectById.setAttribute("id", Constants.selectById);
             selectById.setAttribute("resultMap", table.getMybatisResultMapId());
             selectById.addContent(selectById(table));
             mybatisDocument.getRootElement().addContent(selectById);
         }
         if (mybatisInterFaceConf.isSelectByIds() && table.getIdColumn() != null) {
             Element selectByIds = new Element("select");
-            selectByIds.setAttribute("id", "selectByIds");
+            selectByIds.setAttribute("id", Constants.selectByIds);
             selectByIds.setAttribute("resultMap", table.getMybatisResultMapId());
             selectByIds.addContent(selectByIds(table));
             mybatisDocument.getRootElement().addContent(selectByIds);
         }
-        if (mybatisInterFaceConf.isDeleteByIds() && table.getIdColumn() != null) {
+        if (mybatisInterFaceConf.isDeleteByIds() && table.getIdColumn() != null
+                && Constants.BaseTable.equals(table.getTableType())) {
             Element deleteByIds = new Element("delete");
-            deleteByIds.setAttribute("id", "deleteByIds");
+            deleteByIds.setAttribute("id", Constants.deleteByIds);
             deleteByIds.addContent(deleteByIds(table));
             mybatisDocument.getRootElement().addContent(deleteByIds);
 
         }
-        if (mybatisInterFaceConf.isInsertList() &&table.getIdColumn() != null) {
+        if (mybatisInterFaceConf.isInsertList() &&table.getIdColumn() != null && Constants.BaseTable.equals(table.getTableType())) {
             Element insertList = new Element("insert");
-            insertList.setAttribute("id", "insertList");
-            insertList.addContent(selectList(table));
+            insertList.setAttribute("id", Constants.insertList);
+            insertList.addContent(insertList(table));
             mybatisDocument.getRootElement().addContent(insertList);
         }
         createXML(mybatisDocument, table.getMybatisXMLPath());
@@ -186,7 +198,11 @@ public class MybatisXMLService implements FileCreateService {
     }
 
     private static String insert(TableMessage tableMessage) {
-        List<String> collect = tableMessage.getColumns().stream().map(ColumnWithJavaStatus::getColumnName).map(x -> "`" + x + "`").toList();
+        List<String> collect = tableMessage.getColumns().stream()
+                .filter(x -> !tableMessage.getDateTimeAutoColumns().contains(x))
+                .map(ColumnWithJavaStatus::getColumnName)
+                .map(x -> "`" + x + "`")
+                .toList();
         List<String> values = tableMessage.getColumns().stream().map(ColumnWithJavaStatus::getJavaColumnName).map(x -> "#{" + x + "}").toList();
         return String.format("""
                 insert into %s
@@ -211,7 +227,10 @@ public class MybatisXMLService implements FileCreateService {
         List<ColumnWithJavaStatus> columns = tableMessage.getColumns();
         ArrayList<ColumnWithJavaStatus> columnWithJavaStatuses = new ArrayList<>(columns);
         columnWithJavaStatuses.removeIf(x -> x == tableMessage.getIdColumn());
-        List<String> list = columnWithJavaStatuses.stream().map(x -> String.format("`%s` = #{%s}", x.getColumnName(), x.getJavaColumnName())).toList();
+        List<String> list = columnWithJavaStatuses.stream()
+                .filter(x -> !tableMessage.getDateTimeAutoColumns().contains(x))
+                .map(x -> String.format("`%s` = #{%s}", x.getColumnName(), x.getJavaColumnName()))
+                .toList();
         String join = StringUtils.join(list, ", ");
         return String.format("update %s set %s \n\twhere `%s` = #{%s};",
                 tableMessage.getDatabaseWithTableName(),
@@ -255,7 +274,7 @@ public class MybatisXMLService implements FileCreateService {
                 tableMessage.getIdColumn().getColumnName());
     }
 
-    private static String selectList(TableMessage tableMessage) {
+    private static String insertList(TableMessage tableMessage) {
         List<String> collect = tableMessage.getColumns().stream()
                 .map(ColumnWithJavaStatus::getColumnName)
                 .map(x -> "`" + x + "`")

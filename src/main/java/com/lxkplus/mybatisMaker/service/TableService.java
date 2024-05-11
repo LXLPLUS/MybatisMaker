@@ -8,6 +8,7 @@ import com.lxkplus.mybatisMaker.dto.TableMessage;
 import com.lxkplus.mybatisMaker.enums.Constants;
 import com.lxkplus.mybatisMaker.enums.Package;
 import com.lxkplus.mybatisMaker.service.FileCreateService.DDLService;
+import com.lxkplus.mybatisMaker.utils.CovertUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,9 @@ public class TableService {
     boolean showJdbcType;
     @Value("${mybatis-maker.connect.active_database:null}")
     String activeDatabase;
+
+    @Resource
+    TableCompareService tableCompareService;
 
     HashMap<String, Type> simpleNameMap = new HashMap<>();
 
@@ -112,7 +116,7 @@ public class TableService {
         if (active) {
             return CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, tableNameTrim);
         }
-        return CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, shameName + "_" + tableNameTrim);
+        return CovertUtils.coverToLowerCamel(shameName) + CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, tableNameTrim);
     }
 
     public void fillMessage(TableMessage tableMessage) throws ClassNotFoundException, SQLException {
@@ -150,9 +154,9 @@ public class TableService {
         Path xmlPath = pathService.getPath(tableMessage.getMybatisXmlPackage(), tableMessage.getMapperName() + ".xml");
         tableMessage.setMybatisXMLPath(xmlPath);
         Path mybatisPath = pathService.getPath(tableMessage.getMybatisPackage(), tableMessage.getJavaBeanName() + ".java");
-        tableMessage.setMybatisPath(mybatisPath);
+        tableMessage.setMybatisEntityPath(mybatisPath);
         Path mybatisPlusPath = pathService.getPath(tableMessage.getMybatisPlusPackage(), tableMessage.getJavaBeanName() + ".java");
-        tableMessage.setMybatisPlusPath(mybatisPlusPath);
+        tableMessage.setMybatisPlusEntityPath(mybatisPlusPath);
         Path mapperPath = pathService.getPath(tableMessage.getMybatisMapperPackage(), tableMessage.getMapperName() + ".java");
         tableMessage.setMybatisMapperPath(mapperPath);
         Path ddlPath = pathService.getPath(tableMessage.getDDLPackage(), tableMessage.getTableSchema() + "-" + tableMessage.getJavaBeanName() + ".sql");
@@ -198,5 +202,7 @@ public class TableService {
                 break;
             }
         }
+
+        tableCompareService.moveNotWatchTime(tableMessage);
     }
 }

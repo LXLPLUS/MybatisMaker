@@ -1,9 +1,9 @@
 package com.lxkplus.mybatisMaker.Mapper;
 
-import com.lxkplus.mybatisMaker.po.Column;
-import com.lxkplus.mybatisMaker.po.CreateTableDDL;
-import com.lxkplus.mybatisMaker.po.InformationSchemaTables;
-import com.lxkplus.mybatisMaker.po.ViewDDL;
+import com.lxkplus.mybatisMaker.entity.Column;
+import com.lxkplus.mybatisMaker.entity.CreateTableDDL;
+import com.lxkplus.mybatisMaker.entity.InformationSchemaTables;
+import com.lxkplus.mybatisMaker.entity.ViewDDL;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.Results;

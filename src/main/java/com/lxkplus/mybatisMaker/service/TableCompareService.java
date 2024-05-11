@@ -1,18 +1,21 @@
 package com.lxkplus.mybatisMaker.service;
 
 import com.lxkplus.mybatisMaker.Mapper.DatabaseMapper;
+import com.lxkplus.mybatisMaker.conf.MybatisMakerMybatisConf;
 import com.lxkplus.mybatisMaker.conf.SyncConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
 import com.lxkplus.mybatisMaker.dto.SuitRuler;
 import com.lxkplus.mybatisMaker.dto.TableMessage;
-import com.lxkplus.mybatisMaker.po.Column;
-import com.lxkplus.mybatisMaker.po.InformationSchemaTables;
+import com.lxkplus.mybatisMaker.entity.Column;
+import com.lxkplus.mybatisMaker.entity.InformationSchemaTables;
+import com.lxkplus.mybatisMaker.utils.JDBCTypeUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 
+import java.sql.Types;
 import java.util.*;
 
 @Component
@@ -27,6 +30,9 @@ public class TableCompareService {
     private DatabaseMapper databaseMapper;
     List<SuitRuler> tableAllowList = new ArrayList<>();
     List<SuitRuler> tableNotAllowList = new ArrayList<>();
+
+    @Resource
+    MybatisMakerMybatisConf mybatisMakerMybatisConf;
 
 
     private boolean starEquals(String str, String ruler) {
@@ -141,7 +147,22 @@ public class TableCompareService {
                 }
             }
         }
+
         return diffTables;
+    }
+
+
+    public void moveNotWatchTime(TableMessage tableMessage) {
+        List<ColumnWithJavaStatus> dateTimeNotWatch = new ArrayList<>();
+
+        for (ColumnWithJavaStatus column : tableMessage.getColumns()) {
+            if (mybatisMakerMybatisConf.getDatetimeNotShow().contains(column.getColumnName()) &&
+            Set.of(Types.DATE, Types.TIME, Types.TIME_WITH_TIMEZONE, Types.TIMESTAMP).contains(JDBCTypeUtil.getJDBCTypeNumber(column.getJdbcType())) &&
+            column.getColumnDefault() != null) {
+                dateTimeNotWatch.add(column);
+            }
+        }
+        tableMessage.setDateTimeAutoColumns(dateTimeNotWatch);
     }
 
 

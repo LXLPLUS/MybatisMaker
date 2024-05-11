@@ -1,6 +1,6 @@
 package com.lxkplus.mybatisMaker.dto;
 
-import com.lxkplus.mybatisMaker.po.Column;
+import com.lxkplus.mybatisMaker.entity.Column;
 import lombok.Data;
 
 import java.lang.reflect.Type;

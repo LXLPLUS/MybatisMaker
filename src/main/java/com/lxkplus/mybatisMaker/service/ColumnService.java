@@ -3,7 +3,7 @@ package com.lxkplus.mybatisMaker.service;
 import com.google.common.base.CaseFormat;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
 import com.lxkplus.mybatisMaker.enums.Constants;
-import com.lxkplus.mybatisMaker.po.Column;
+import com.lxkplus.mybatisMaker.entity.Column;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;

@@ -10,6 +10,7 @@ import com.lxkplus.mybatisMaker.service.TemplateService;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.javapoet.AnnotationSpec;
@@ -22,10 +23,11 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
+import java.nio.file.Path;
 
 @Service
 @Slf4j
-public class MybatisService implements FileCreateService {
+public class MybatisEntityService implements FileCreateService {
     @Resource
     PathService pathService;
     @Value("${mybatis-maker.column_doc_format}")
@@ -39,6 +41,12 @@ public class MybatisService implements FileCreateService {
     boolean serializable;
     @Resource
     LombokService lombokService;
+
+    @Override
+    public void deleteFile(TableMessage tableMessage) throws IOException {
+        Path mybatisBeanPath = tableMessage.getMybatisEntityPath();
+        FileUtils.deleteDirectory(mybatisBeanPath.getParent().toFile());
+    }
 
     @Override
     public void createFile(TableMessage table) throws IOException {
@@ -79,6 +87,11 @@ public class MybatisService implements FileCreateService {
             }
         }
         for (ColumnWithJavaStatus column : table.getColumns()) {
+
+            // 不生成时间对应的字段，直接跳过
+            if (table.getDateTimeAutoColumns().contains(column)) {
+                continue;
+            }
             FieldSpec.Builder columnBuilder = FieldSpec.builder(column.getJavaType(), column.getJavaColumnName(), Modifier.PRIVATE);
             if (mybatisMakerConf.isJavaDocExist()) {
                 String format = templateService.replace(docTemplate, column);
@@ -124,6 +137,6 @@ public class MybatisService implements FileCreateService {
         String string = javaClassBuilder.toString()
                 .replace(TemplateObject.class.getTypeName(), table.getFullyQualifiedName())
                 .replace(TemplateObject.class.getSimpleName(), table.getJavaBeanName());
-        pathService.createFile(table.getMybatisPath(), string);
+        pathService.createFile(table.getMybatisEntityPath(), string);
     }
 }

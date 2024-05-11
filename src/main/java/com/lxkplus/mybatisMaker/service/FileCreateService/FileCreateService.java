@@ -6,5 +6,7 @@ import java.io.IOException;
 
 public interface FileCreateService {
 
+    void deleteFile(TableMessage tableMessage) throws IOException;
+
     void createFile(TableMessage table) throws IOException;
 }
