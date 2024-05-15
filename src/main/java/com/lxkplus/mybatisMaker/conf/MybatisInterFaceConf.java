@@ -16,5 +16,4 @@ public class MybatisInterFaceConf {
     boolean deleteByIds;
     boolean insertList;
     boolean selectAll;
-    boolean selectPages;
 }

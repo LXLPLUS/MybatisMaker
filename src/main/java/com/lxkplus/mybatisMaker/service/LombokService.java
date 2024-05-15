@@ -2,7 +2,7 @@ package com.lxkplus.mybatisMaker.service;
 
 import com.google.common.base.CaseFormat;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
-import com.lxkplus.mybatisMaker.dto.TableMessage;
+import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.enums.TemplateObject;
 import jakarta.annotation.PostConstruct;
 import lombok.*;
@@ -53,7 +53,7 @@ public class LombokService {
     }
 
 
-    public MethodSpec equalsBuilder(TableMessage tableMessage) {
+    public MethodSpec equalsBuilder(TableFlowContext tableFlowContext) {
         MethodSpec.Builder builder = MethodSpec.methodBuilder("equals");
         builder.addModifiers(Modifier.PUBLIC);
         builder.addAnnotation(Override.class);
@@ -65,22 +65,22 @@ public class LombokService {
                 $T that = ($T) object
                 """, TemplateObject.class, TemplateObject.class);
         builder.addCode("return ");
-        for (int i = 0; i < tableMessage.getColumns().size(); i++) {
-            ColumnWithJavaStatus column = tableMessage.getColumns().get(i);
+        for (int i = 0; i < tableFlowContext.getColumns().size(); i++) {
+            ColumnWithJavaStatus column = tableFlowContext.getColumns().get(i);
             builder.addCode("$T.equals(this.$N, that.$N)", Objects.class, column.getJavaColumnName(), column.getJavaColumnName());
-            if (i !=  tableMessage.getColumns().size() - 1) {
+            if (i !=  tableFlowContext.getColumns().size() - 1) {
                 builder.addCode(" && ");
             }
         }
         return builder.build();
     }
-    public MethodSpec hashCodeBuilder(TableMessage tableMessage) {
+    public MethodSpec hashCodeBuilder(TableFlowContext tableFlowContext) {
         MethodSpec.Builder builder = MethodSpec.methodBuilder("hashCode");
         builder.addModifiers(Modifier.PUBLIC);
         builder.returns(int.class);
         builder.addAnnotation(Override.class);
         StringJoiner sj = new StringJoiner(", ", "(", ")");
-        tableMessage.getColumns().stream().map(ColumnWithJavaStatus::getJavaColumnName).toList().forEach(sj::add);
+        tableFlowContext.getColumns().stream().map(ColumnWithJavaStatus::getJavaColumnName).toList().forEach(sj::add);
         builder.addStatement("return $T.hash" + sj, Objects.class);
         return builder.build();
     }

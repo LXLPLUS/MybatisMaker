@@ -3,8 +3,9 @@ package com.lxkplus.mybatisMaker.service;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.google.common.base.CaseFormat;
 import com.lxkplus.mybatisMaker.conf.MybatisMakerConf;
+import com.lxkplus.mybatisMaker.conf.MybatisMakerMybatisConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
-import com.lxkplus.mybatisMaker.dto.TableMessage;
+import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.enums.Constants;
 import com.lxkplus.mybatisMaker.enums.Package;
 import com.lxkplus.mybatisMaker.service.FileCreateService.DDLService;
@@ -33,18 +34,15 @@ public class TableService {
     MybatisMakerConf mybatisMakerConf;
     @Resource
     JdbcTypeService jdbcTypeService;
+
+    @Resource
+    MybatisMakerMybatisConf mybatisMakerMybatisConf;
     @Resource
     DDLService ddlService;
     @Value("${mybatis-maker.package.ddl-package}")
     String DDLPackage;
     @Value("${mybatis-maker.package.mybatis-plus-bean-package}")
     String mybatisPlusPackage;
-    @Value("${mybatis-maker.mybatis.mybatis-bean-package}")
-    String mybatisPackage;
-    @Value("${mybatis-maker.mybatis.mapper-package}")
-    String mapperPackage;
-    @Value("${mybatis-maker.mybatis.xml-package}")
-    String xmlPackage;
     @Value("${mybatis-maker.mybatis.jdbc_type}")
     boolean showJdbcType;
     @Value("${mybatis-maker.connect.active_database:null}")
@@ -97,8 +95,10 @@ public class TableService {
     PathService pathService;
     private final Random r = new Random();
 
-    private String convertTableNameToJavaBeanName(String shameName, String tableName, boolean active) {
-        tableName = tableName.replace(" ", "_").replaceAll(Constants.JAVA_NOT_SUPPORT_CHAR, "");
+    private String convertTableNameToJavaBeanName(String schemaName, String tableName, boolean active) {
+        tableName = tableName
+                .replace(" ", "_")
+                .replaceAll(Constants.JAVA_NOT_SUPPORT_CHAR, "");
         if (StringUtils.isBlank(tableName)) {
             return "Random" + r.nextInt();
         }
@@ -107,78 +107,82 @@ public class TableService {
         }
         List<String> trimFirst = mybatisMakerConf.getTrimFirst();
         String tableNameTrim =  tableName;
+        // 移除所有前后缀
+        // 只移除一次
         for (String head : trimFirst) {
             tableNameTrim = StringUtils.removeStart(tableNameTrim, head);
+            break;
         }
         for (String tail : mybatisMakerConf.getTrimLast()) {
             tableNameTrim = StringUtils.removeEnd(tableNameTrim, tail);
+            break;
         }
         if (active) {
             return CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, tableNameTrim);
         }
-        return CovertUtils.coverToLowerCamel(shameName) + CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, tableNameTrim);
+        return CovertUtils.coverToUpperCamel(schemaName) + CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, tableNameTrim);
     }
 
-    public void fillMessage(TableMessage tableMessage) throws ClassNotFoundException, SQLException {
+    public void fillMessage(TableFlowContext tableFlowContext) throws ClassNotFoundException {
 
         // 是否带数据库前缀
-        if (tableMessage.getTableSchema().equals(activeDatabase)) {
-            tableMessage.setActiveDatabase(true);
+        if (tableFlowContext.getTableSchema().equals(activeDatabase)) {
+            tableFlowContext.setActiveDatabase(true);
         }
 
-        if (tableMessage.isActiveDatabase()) {
-            tableMessage.setDatabaseWithTableName(tableMessage.getTableName());
+        if (tableFlowContext.isActiveDatabase()) {
+            tableFlowContext.setDatabaseWithTableName(tableFlowContext.getTableName());
         } else {
-            tableMessage.setDatabaseWithTableName(tableMessage.getTableSchema() + "." + tableMessage.getTableName());
+            tableFlowContext.setDatabaseWithTableName(tableFlowContext.getTableSchema() + "." + tableFlowContext.getTableName());
         }
 
         // 进行名称转化
-        String tableName = tableMessage.getTableName();
-        String tableSchema = tableMessage.getTableSchema();
-        String beanName = this.convertTableNameToJavaBeanName(tableSchema, tableName, tableMessage.isActiveDatabase());
-        tableMessage.setJavaBeanName(beanName);
-        tableMessage.setMapperName(tableMessage.getJavaBeanName() + "Mapper");
-        tableMessage.setFullyQualifiedName(mybatisPackage + "." + tableMessage.getJavaBeanName());
+        String tableName = tableFlowContext.getTableName();
+        String tableSchema = tableFlowContext.getTableSchema();
+        String beanName = this.convertTableNameToJavaBeanName(tableSchema, tableName, tableFlowContext.isActiveDatabase());
+        tableFlowContext.setJavaBeanName(beanName);
+        tableFlowContext.setMapperName(tableFlowContext.getJavaBeanName() + "Mapper");
+        tableFlowContext.setFullyQualifiedName(mybatisMakerMybatisConf.getMybatisEntityPackage() + "." + tableFlowContext.getJavaBeanName());
         /*
          * package
          */
-        tableMessage.setMybatisXmlPackage(new Package(xmlPackage));
-        tableMessage.setMybatisPackage(new Package(mybatisPackage));
-        tableMessage.setMybatisPlusPackage(new Package(mybatisPlusPackage));
-        tableMessage.setMybatisMapperPackage(new Package(mapperPackage));
-        tableMessage.setDDLPackage(new Package(DDLPackage));
+        tableFlowContext.setMybatisXmlPackage(new Package(mybatisMakerMybatisConf.getXmlPackage()));
+        tableFlowContext.setMybatisPackage(new Package(mybatisMakerMybatisConf.getMybatisEntityPackage()));
+        tableFlowContext.setMybatisPlusPackage(new Package(mybatisPlusPackage));
+        tableFlowContext.setMybatisMapperPackage(new Package(mybatisMakerMybatisConf.getMapperPackage()));
+        tableFlowContext.setDDLPackage(new Package(DDLPackage));
 
         /*
          * Path
          */
-        Path xmlPath = pathService.getPath(tableMessage.getMybatisXmlPackage(), tableMessage.getMapperName() + ".xml");
-        tableMessage.setMybatisXMLPath(xmlPath);
-        Path mybatisPath = pathService.getPath(tableMessage.getMybatisPackage(), tableMessage.getJavaBeanName() + ".java");
-        tableMessage.setMybatisEntityPath(mybatisPath);
-        Path mybatisPlusPath = pathService.getPath(tableMessage.getMybatisPlusPackage(), tableMessage.getJavaBeanName() + ".java");
-        tableMessage.setMybatisPlusEntityPath(mybatisPlusPath);
-        Path mapperPath = pathService.getPath(tableMessage.getMybatisMapperPackage(), tableMessage.getMapperName() + ".java");
-        tableMessage.setMybatisMapperPath(mapperPath);
-        Path ddlPath = pathService.getPath(tableMessage.getDDLPackage(), tableMessage.getTableSchema() + "-" + tableMessage.getJavaBeanName() + ".sql");
-        tableMessage.setDDLPath(ddlPath);
+        Path xmlPath = pathService.getPath(tableFlowContext.getMybatisXmlPackage(), tableFlowContext.getMapperName() + ".xml");
+        tableFlowContext.setMybatisXMLPath(xmlPath);
+        Path mybatisPath = pathService.getPath(tableFlowContext.getMybatisPackage(), tableFlowContext.getJavaBeanName() + ".java");
+        tableFlowContext.setMybatisEntityPath(mybatisPath);
+        Path mybatisPlusPath = pathService.getPath(tableFlowContext.getMybatisPlusPackage(), tableFlowContext.getJavaBeanName() + ".java");
+        tableFlowContext.setMybatisPlusEntityPath(mybatisPlusPath);
+        Path mapperPath = pathService.getPath(tableFlowContext.getMybatisMapperPackage(), tableFlowContext.getMapperName() + ".java");
+        tableFlowContext.setMybatisMapperPath(mapperPath);
+        Path ddlPath = pathService.getPath(tableFlowContext.getDDLPackage(), tableFlowContext.getTableSchema() + "-" + tableFlowContext.getJavaBeanName() + ".sql");
+        tableFlowContext.setDDLPath(ddlPath);
 
-        tableMessage.setMybatisResultMapId(tableMessage.getJavaBeanName() + "Map");
+        tableFlowContext.setMybatisResultMapId(tableFlowContext.getJavaBeanName() + "Map");
 
 
         // 生成基本表的建表语句
-        String DDL = ddlService.getView(tableMessage);
+        String DDL = ddlService.getView(tableFlowContext);
         DDL = DDL.replaceAll("AUTO_INCREMENT=\\d+", "AUTO_INCREMENT=0");
-        tableMessage.setDDL(DDL + ";");
+        tableFlowContext.setDDL(DDL + ";");
 
-        List<ColumnWithJavaStatus> columns = tableMessage.getColumns();
+        List<ColumnWithJavaStatus> columns = tableFlowContext.getColumns();
         columns.sort(Comparator.comparing(ColumnWithJavaStatus::getOrdinalPosition));
 
         // 添加jDBCType映射
-        jdbcTypeService.fillJdbcType(tableMessage);
+        jdbcTypeService.fillJdbcType(tableFlowContext);
 
         // 通过配置文件实现类型映射
         Map<String, String> typeMapper = mybatisMakerConf.getTypeMapper();
-        for (ColumnWithJavaStatus column : tableMessage.getColumns()) {
+        for (ColumnWithJavaStatus column : tableFlowContext.getColumns()) {
             if (simpleNameMap.containsKey(typeMapper.get(column.getJdbcType()))) {
                 Type type = simpleNameMap.get(typeMapper.get(column.getJdbcType()));
                 column.setJavaType(type);
@@ -190,19 +194,19 @@ public class TableService {
         }
 
         // 获取插入表格
-        for (ColumnWithJavaStatus column : tableMessage.getColumns()) {
+        for (ColumnWithJavaStatus column : tableFlowContext.getColumns()) {
             if (column.getOrdinalPosition() == 1 && "PRI".equals(column.getColumnKey())) {
-                tableMessage.setIdColumn(column);
+                tableFlowContext.setIdColumn(column);
                 if (Set.of(JDBCType.valueOf(Types.BIGINT).getName(), JDBCType.valueOf(Types.INTEGER).getName())
-                        .contains(tableMessage.getIdColumn().getJdbcType())) {
-                    tableMessage.setIdType(IdType.AUTO);
-                } else if (Set.of(JDBCType.valueOf(Types.VARCHAR).getName(), JDBCType.CHAR.getName()).contains(tableMessage.getIdColumn().getJdbcType())) {
-                    tableMessage.setIdType(IdType.ASSIGN_UUID);
+                        .contains(tableFlowContext.getIdColumn().getJdbcType())) {
+                    tableFlowContext.setIdType(IdType.AUTO);
+                } else if (Set.of(JDBCType.valueOf(Types.VARCHAR).getName(), JDBCType.CHAR.getName()).contains(tableFlowContext.getIdColumn().getJdbcType())) {
+                    tableFlowContext.setIdType(IdType.ASSIGN_UUID);
                 }
                 break;
             }
         }
 
-        tableCompareService.moveNotWatchTime(tableMessage);
+        tableCompareService.tagNotWatchTime(tableFlowContext);
     }
 }

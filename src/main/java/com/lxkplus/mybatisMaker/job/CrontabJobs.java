@@ -2,7 +2,7 @@ package com.lxkplus.mybatisMaker.job;
 
 import com.lxkplus.mybatisMaker.Mapper.DatabaseMapper;
 import com.lxkplus.mybatisMaker.conf.MybatisMakerConf;
-import com.lxkplus.mybatisMaker.dto.TableMessage;
+import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.entity.Column;
 import com.lxkplus.mybatisMaker.enums.Constants;
 import com.lxkplus.mybatisMaker.service.CacheService;
@@ -16,7 +16,6 @@ import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,37 +79,28 @@ public class CrontabJobs {
             if (notChangeTimeStamp > 0 && notChangeTimeStamp % Constants.TIME_INFO == 0) {
                 log.info("数据库表格{}秒没发生变更", notChangeTimeStamp);
             }
+            return;
         }
 
         // 对数据进行处理，防止异常
         try {
-            if (!oldColumns.equals(newColumns)) {
-                // 打印删除和删除的信息
-                tableCompareService.infoCreateAndDelete(oldColumns, newColumns);
-                // 获取有变更的表格，并填入列信息
-                List<TableMessage> tables = tableCompareService.getCreateOrDiffTable(oldColumns, newColumns);
-                tables.forEach(x -> {
-                    try {
-                        tableService.fillMessage(x);
-                    } catch (ClassNotFoundException | SQLException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+            // 打印删除和删除的信息
+            tableCompareService.infoCreateAndDelete(oldColumns, newColumns);
+            // 获取有变更的表格，并填入列信息
+            List<TableFlowContext> tables = tableCompareService.getCreateOrDiffTable(oldColumns, newColumns);
 
+            for (TableFlowContext table : tables) {
+                tableService.fillMessage(table);
 
-                for (TableMessage table : tables) {
-                    tableService.fillMessage(table);
-
-                    // 只执行一次
-                    if (firstRun && mybatisMakerConf.isClearHistory()) {
-                        for (FileCreateService fileCreateService : taskList) {
-                            fileCreateService.deleteFile(table);
-                        }
-                        firstRun = false;
-                    }
+                // 只执行一次
+                if (firstRun && mybatisMakerConf.isClearHistory()) {
                     for (FileCreateService fileCreateService : taskList) {
-                        fileCreateService.createFile(table);
+                        fileCreateService.deleteFile(table);
                     }
+                    firstRun = false;
+                }
+                for (FileCreateService fileCreateService : taskList) {
+                    fileCreateService.createFile(table);
                 }
             }
         } catch (Exception e) {

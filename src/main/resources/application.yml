@@ -9,6 +9,10 @@ mybatis-maker:
         username: root
         active_database: db1
 
+
+    # 代码生成的根目录
+    code-root: ./data
+
     sync:
         # 侦听的数据库 + 表格
         # 如果侦听全部，那么直接*.*
@@ -20,10 +24,6 @@ mybatis-maker:
             - "sakila.*"
             - "world.*"
 
-
-    # 代码生成的根目录
-    code-root: ./data
-
     package:
         # 生成sql的位置
         ddl-package: sql
@@ -32,12 +32,14 @@ mybatis-maker:
 
     mybatis:
         # table对应的路径
-        mybatis-bean-package: mybatis.entity
+        mybatis-entity-package: mybatis.entity
         # mapper
         mapper-package: mybatis.mapper
         xml-package: mybatis.xml
         sql:
+            # 视图不能生成插入语句
             insert: true
+            # 不带主键的不能生成byID
             deleteById: true
             updateById: true
             selectById: true
@@ -47,22 +49,16 @@ mybatis-maker:
             deleteByIds: true
             selectByIds: true
             selectAll: true
-            selectPages: true
 
-        # 由数据库自动生成的时间，不在表格中管理的字段
+        # 由数据库自动生成的时间，update和insert不参与
         # 必须带默认值CURRENT_TIMESTAMP或者ON UPDATE CURRENT_TIMESTAMP
-        datetime_not_show:
+        datetime_auto_insert_update:
             - insert_time
             - update_time
             - create_time
 
         # 是否指定JdbcType
         jdbc_type: true
-
-    mybatis-plus:
-        # 设置第一个 + 结尾为id的字段为id（mybatis-plus）
-        auto_id: true
-
 
     # 使用@Data生成
     # 如果不指定的话，会用传统的get set方式生成
@@ -80,7 +76,7 @@ mybatis-maker:
     # 自动生成序列化字段Serializable
     serializable: true
 
-    swagger3_exist: true
+    swagger3_exist: false
     # 是否生成javaDoc
     java-doc-exist: true
     # 支持:

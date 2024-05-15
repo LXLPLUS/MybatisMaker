@@ -2,7 +2,7 @@ package com.lxkplus.mybatisMaker.service.FileCreateService;
 
 import com.lxkplus.mybatisMaker.conf.MybatisMakerConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
-import com.lxkplus.mybatisMaker.dto.TableMessage;
+import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.enums.TemplateObject;
 import com.lxkplus.mybatisMaker.service.LombokService;
 import com.lxkplus.mybatisMaker.service.PathService;
@@ -11,7 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
-import org.springframework.beans.factory.annotation.Value;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.javapoet.AnnotationSpec;
 import org.springframework.javapoet.FieldSpec;
@@ -30,26 +30,21 @@ import java.nio.file.Path;
 public class MybatisEntityService implements FileCreateService {
     @Resource
     PathService pathService;
-    @Value("${mybatis-maker.column_doc_format}")
-    String docTemplate;
     @Resource
     TemplateService templateService;
     @Resource
     MybatisMakerConf mybatisMakerConf;
-    String dateTimeFormat = "yyyy-MM-dd-HH-mm-ss";
-    @Value("${mybatis-maker.serializable}")
-    boolean serializable;
     @Resource
     LombokService lombokService;
 
     @Override
-    public void deleteFile(TableMessage tableMessage) throws IOException {
-        Path mybatisBeanPath = tableMessage.getMybatisEntityPath();
+    public void deleteFile(TableFlowContext tableFlowContext) throws IOException {
+        Path mybatisBeanPath = tableFlowContext.getMybatisEntityPath();
         FileUtils.deleteDirectory(mybatisBeanPath.getParent().toFile());
     }
 
     @Override
-    public void createFile(TableMessage table) throws IOException {
+    public void createFile(TableFlowContext table) throws IOException {
         if (table.getMybatisPackage() == null) {
             return;
         }
@@ -65,7 +60,7 @@ public class MybatisEntityService implements FileCreateService {
         }
 
 
-        if (serializable) {
+        if (mybatisMakerConf.isSerializable()) {
             builder.addSuperinterface(Serializable.class);
             FieldSpec.Builder serialVersionUID = FieldSpec.builder(long.class,
                     "serialVersionUID",
@@ -87,14 +82,9 @@ public class MybatisEntityService implements FileCreateService {
             }
         }
         for (ColumnWithJavaStatus column : table.getColumns()) {
-
-            // 不生成时间对应的字段，直接跳过
-            if (table.getDateTimeAutoColumns().contains(column)) {
-                continue;
-            }
             FieldSpec.Builder columnBuilder = FieldSpec.builder(column.getJavaType(), column.getJavaColumnName(), Modifier.PRIVATE);
             if (mybatisMakerConf.isJavaDocExist()) {
-                String format = templateService.replace(docTemplate, column);
+                String format = templateService.replace(mybatisMakerConf.getColumnDocFormat(), column);
                 columnBuilder.addJavadoc(format);
             }
 
@@ -106,18 +96,20 @@ public class MybatisEntityService implements FileCreateService {
                     swagger.addMember("maxLength", "$L", Long.toString(column.getCharacterMaximumLength()));
                 }
                 swagger.addMember("type", "$S", column.getColumnType());
-                if (column.getColumnComment() != null) {
+                if (StringUtils.isNotBlank(column.getColumnComment())) {
                     swagger.addMember("description", "$S", column.getColumnComment());
                 }
                 swagger.addMember("nullable", "$L", column.getIsNullable());
-                if (column.getColumnDefault() != null) {
+                if (StringUtils.isNotBlank(column.getColumnDefault())) {
                     swagger.addMember("defaultValue", "$S", column.getColumnDefault());
                 }
                 columnBuilder.addAnnotation(swagger.build());
             }
             if (column.isCheckDateTime()) {
                 AnnotationSpec.Builder pattern =
-                        AnnotationSpec.builder(DateTimeFormat.class).addMember("pattern", "$S",dateTimeFormat);
+                        AnnotationSpec.builder(DateTimeFormat.class).addMember("pattern",
+                                "$S",
+                                mybatisMakerConf.getColumnDocFormat());
                 columnBuilder.addAnnotation(pattern.build());
             }
             builder.addField(columnBuilder.build());

@@ -2,7 +2,7 @@ package com.lxkplus.mybatisMaker.service.FileCreateService;
 
 import com.lxkplus.mybatisMaker.conf.MybatisInterFaceConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
-import com.lxkplus.mybatisMaker.dto.TableMessage;
+import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.enums.Constants;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
@@ -98,13 +98,13 @@ public class MybatisXMLService implements FileCreateService {
 
 
     @Override
-    public void deleteFile(TableMessage tableMessage) throws IOException {
-        Path mybatisXMLPath = tableMessage.getMybatisXMLPath();
+    public void deleteFile(TableFlowContext tableFlowContext) throws IOException {
+        Path mybatisXMLPath = tableFlowContext.getMybatisXMLPath();
         FileUtils.deleteDirectory(mybatisXMLPath.getParent().toFile());
     }
 
     @Override
-    public void createFile(TableMessage table) throws IOException {
+    public void createFile(TableFlowContext table) throws IOException {
         if (!Files.exists(table.getMybatisXMLPath().getParent())) {
             Files.createDirectories(table.getMybatisXMLPath().getParent());
         }
@@ -126,7 +126,7 @@ public class MybatisXMLService implements FileCreateService {
             mybatisDocument.getRootElement().addContent(select);
         }
         if (mybatisInterFaceConf.isUpdateById() && table.getIdColumn() != null
-                && Constants.BaseTable.equals(table.getTableType())) {
+                && Constants.BaseTable.equals(table.getTableType()) && table.getColumns().size() > 1) {
             Element update = new Element("update");
             update.setAttribute("id", Constants.updateById);
             update.addContent(updateById(table));
@@ -152,7 +152,6 @@ public class MybatisXMLService implements FileCreateService {
             deleteByIds.setAttribute("id", Constants.deleteByIds);
             deleteByIds.addContent(deleteByIds(table));
             mybatisDocument.getRootElement().addContent(deleteByIds);
-
         }
         if (mybatisInterFaceConf.isInsertList() &&table.getIdColumn() != null && Constants.BaseTable.equals(table.getTableType())) {
             Element insertList = new Element("insert");
@@ -164,7 +163,7 @@ public class MybatisXMLService implements FileCreateService {
     }
 
     @NotNull
-    private Element getResultElement(TableMessage table) {
+    private Element getResultElement(TableFlowContext table) {
         Element resultMap = new Element("resultMap");
         resultMap.setAttribute("id", table.getMybatisResultMapId());
         resultMap.setAttribute("type", table.getFullyQualifiedName());
@@ -197,60 +196,65 @@ public class MybatisXMLService implements FileCreateService {
         return resultMap;
     }
 
-    private static String insert(TableMessage tableMessage) {
-        List<String> collect = tableMessage.getColumns().stream()
-                .filter(x -> !tableMessage.getDateTimeAutoColumns().contains(x))
+    private static String insert(TableFlowContext tableFlowContext) {
+        List<String> collect = tableFlowContext.getColumns().stream()
+                .filter(x -> !tableFlowContext.getDateTimeAutoColumns().contains(x))
                 .map(ColumnWithJavaStatus::getColumnName)
                 .map(x -> "`" + x + "`")
                 .toList();
-        List<String> values = tableMessage.getColumns().stream().map(ColumnWithJavaStatus::getJavaColumnName).map(x -> "#{" + x + "}").toList();
+        List<String> values = tableFlowContext.getColumns()
+                .stream()
+                .filter(x -> !tableFlowContext.getDateTimeAutoColumns().contains(x))
+                .map(ColumnWithJavaStatus::getJavaColumnName)
+                .map(x -> "#{" + x + "}").toList();
         return String.format("""
                 insert into %s
                 \t(%s)
-                \t\tvalues
-                \t(%s);
+                \t\tvalues (%s);
                 """,
-                tableMessage.getDatabaseWithTableName(),
+                tableFlowContext.getDatabaseWithTableName(),
                 StringUtils.join(collect, ", "),
                 StringUtils.join(values, ", ")
         );
     }
 
-    private static String deleteByID(TableMessage tableMessage) {
+    private static String deleteByID(TableFlowContext tableFlowContext) {
         return String.format("delete from %s \n\twhere `%s` = #{%s};",
-                tableMessage.getDatabaseWithTableName(),
-                tableMessage.getIdColumn().getColumnName(),
-                tableMessage.getIdColumn().getJavaColumnName());
+                tableFlowContext.getDatabaseWithTableName(),
+                tableFlowContext.getIdColumn().getColumnName(),
+                tableFlowContext.getIdColumn().getJavaColumnName());
     }
 
-    private static String updateById(TableMessage tableMessage) {
-        List<ColumnWithJavaStatus> columns = tableMessage.getColumns();
+    private static String updateById(TableFlowContext tableFlowContext) {
+        List<ColumnWithJavaStatus> columns = tableFlowContext.getColumns();
         ArrayList<ColumnWithJavaStatus> columnWithJavaStatuses = new ArrayList<>(columns);
-        columnWithJavaStatuses.removeIf(x -> x == tableMessage.getIdColumn());
+        columnWithJavaStatuses.removeIf(x -> x == tableFlowContext.getIdColumn());
         List<String> list = columnWithJavaStatuses.stream()
-                .filter(x -> !tableMessage.getDateTimeAutoColumns().contains(x))
+                .filter(x -> !tableFlowContext.getDateTimeAutoColumns().contains(x))
                 .map(x -> String.format("`%s` = #{%s}", x.getColumnName(), x.getJavaColumnName()))
                 .toList();
         String join = StringUtils.join(list, ", ");
         return String.format("update %s set %s \n\twhere `%s` = #{%s};",
-                tableMessage.getDatabaseWithTableName(),
+                tableFlowContext.getDatabaseWithTableName(),
                 join,
-                tableMessage.getIdColumn().getColumnName(),
-                tableMessage.getIdColumn().getJavaColumnName());
+                tableFlowContext.getIdColumn().getColumnName(),
+                tableFlowContext.getIdColumn().getJavaColumnName());
     }
 
-    public static String selectById(TableMessage tableMessage) {
-        List<String> list = tableMessage.getColumns().stream().map(x -> "`" + x.getColumnName() + "`").toList();
+    public static String selectById(TableFlowContext tableFlowContext) {
+        List<String> list = tableFlowContext.getColumns().stream()
+                .map(x -> "`" + x.getColumnName() + "`")
+                .toList();
 
         return String.format("select %s from %s \n\t\twhere `%s` = #{%s}",
                 StringUtils.join(list, ", "),
-                tableMessage.getDatabaseWithTableName(),
-                tableMessage.getIdColumn().getColumnName(),
-                tableMessage.getIdColumn().getJavaColumnName());
+                tableFlowContext.getDatabaseWithTableName(),
+                tableFlowContext.getIdColumn().getColumnName(),
+                tableFlowContext.getIdColumn().getJavaColumnName());
     }
 
-    public static String selectByIds(TableMessage tableMessage) {
-        List<String> list = tableMessage.getColumns().stream().map(x -> "`" + x.getColumnName() + "`").toList();
+    public static String selectByIds(TableFlowContext tableFlowContext) {
+        List<String> list = tableFlowContext.getColumns().stream().map(x -> "`" + x.getColumnName() + "`").toList();
         return String.format("""
                     select %s from %s
                         where `%s` in
@@ -258,11 +262,11 @@ public class MybatisXMLService implements FileCreateService {
                         #{item}
                         </foreach>
                 """, StringUtils.join(list, ", "),
-                tableMessage.getDatabaseWithTableName(),
-                tableMessage.getIdColumn().getColumnName());
+                tableFlowContext.getDatabaseWithTableName(),
+                tableFlowContext.getIdColumn().getColumnName());
     }
 
-    private static String deleteByIds(TableMessage tableMessage) {
+    private static String deleteByIds(TableFlowContext tableFlowContext) {
         return String.format("""
                         delete from %s
                             where `%s` in
@@ -270,16 +274,18 @@ public class MybatisXMLService implements FileCreateService {
                             #{item}
                             </foreach>
                         """,
-                tableMessage.getDatabaseWithTableName(),
-                tableMessage.getIdColumn().getColumnName());
+                tableFlowContext.getDatabaseWithTableName(),
+                tableFlowContext.getIdColumn().getColumnName());
     }
 
-    private static String insertList(TableMessage tableMessage) {
-        List<String> collect = tableMessage.getColumns().stream()
+    private static String insertList(TableFlowContext tableFlowContext) {
+        List<String> collect = tableFlowContext.getColumns().stream()
+                .filter(x -> !tableFlowContext.getDateTimeAutoColumns().contains(x))
                 .map(ColumnWithJavaStatus::getColumnName)
                 .map(x -> "`" + x + "`")
                 .toList();
-        List<String> values = tableMessage.getColumns().stream()
+        List<String> values = tableFlowContext.getColumns().stream()
+                .filter(x -> !tableFlowContext.getDateTimeAutoColumns().contains(x))
                 .map(ColumnWithJavaStatus::getJavaColumnName)
                 .map(x -> "#{item." + x + "}")
                 .toList();
@@ -291,7 +297,7 @@ public class MybatisXMLService implements FileCreateService {
                     (%s)
                     </foreach>
                 """,
-                tableMessage.getDatabaseWithTableName(),
+                tableFlowContext.getDatabaseWithTableName(),
                 StringUtils.join(collect, ", "),
                 StringUtils.join(values, ", ")
         );

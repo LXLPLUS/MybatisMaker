@@ -1,6 +1,7 @@
 package com.lxkplus.mybatisMaker.dto;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.lxkplus.mybatisMaker.entity.Column;
 import com.lxkplus.mybatisMaker.enums.Package;
 import lombok.Data;
 
@@ -9,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
-public class TableMessage {
+public class TableFlowContext {
     String tableCatalog;
     String tableSchema;
     String javaBeanName;
@@ -69,4 +70,13 @@ public class TableMessage {
 
     boolean activeDatabase;
     String databaseWithTableName;
+
+    public static TableFlowContext fromColumn(Column column) {
+        TableFlowContext tableFlowContext = new TableFlowContext();
+        tableFlowContext.setTableCatalog(column.getTableCatalog());
+        tableFlowContext.setTableSchema(column.getTableSchema());
+        tableFlowContext.setTableName(column.getTableName());
+        return tableFlowContext;
+
+    }
 }

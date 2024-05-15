@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.lxkplus.mybatisMaker.conf.MybatisMakerConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
-import com.lxkplus.mybatisMaker.dto.TableMessage;
+import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.service.LombokService;
 import com.lxkplus.mybatisMaker.service.PathService;
 import com.lxkplus.mybatisMaker.service.TemplateService;
@@ -35,14 +35,6 @@ public class MybatisPlusEntityService implements FileCreateService {
     String packageName;
     @Resource
     PathService pathService;
-    @Value("${mybatis-maker.java-doc-exist}")
-    boolean javaDocExist;
-    @Value("${mybatis-maker.mybatis-plus.auto_id}")
-    boolean autoID;
-    @Value("${mybatis-maker.serializable}")
-    boolean serializable;
-    @Value("${mybatis-maker.column_doc_format}")
-    String docTemplate;
     @Resource
     TemplateService templateService;
     @Resource
@@ -51,13 +43,13 @@ public class MybatisPlusEntityService implements FileCreateService {
     MybatisMakerConf mybatisMakerConf;
 
     @Override
-    public void deleteFile(TableMessage tableMessage) throws IOException {
-        Path mybatisPlusPath = tableMessage.getMybatisPlusEntityPath();
+    public void deleteFile(TableFlowContext tableFlowContext) throws IOException {
+        Path mybatisPlusPath = tableFlowContext.getMybatisPlusEntityPath();
         FileUtils.deleteDirectory(mybatisPlusPath.getParent().toFile());;
     }
 
     @Override
-    public void createFile(@NotNull TableMessage table) throws IOException {
+    public void createFile(@NotNull TableFlowContext table) throws IOException {
         if (packageName == null) {
             return;
         }
@@ -81,7 +73,7 @@ public class MybatisPlusEntityService implements FileCreateService {
         builder.addAnnotation(tableHeader.build());
 
         // 添加序列化逻辑
-        if (serializable) {
+        if (mybatisMakerConf.isSerializable()) {
             builder.addSuperinterface(Serializable.class);
             FieldSpec.Builder serialVersionUID = FieldSpec.builder(long.class,
                     "serialVersionUID",
@@ -98,13 +90,13 @@ public class MybatisPlusEntityService implements FileCreateService {
         for (ColumnWithJavaStatus column : table.getColumns()) {
             FieldSpec.Builder columnBuilder = FieldSpec.builder(column.getJavaType(), column.getJavaColumnName(), Modifier.PRIVATE);
 
-            if (javaDocExist) {
-                String format = templateService.replace(docTemplate, column);
+            if (mybatisMakerConf.isJavaDocExist()) {
+                String format = templateService.replace(mybatisMakerConf.getColumnDocFormat(), column);
                 columnBuilder.addJavadoc(format);
             }
 
             // 操作tableId和TableField
-            if (autoID && Objects.equals(table.getIdColumn(), column)) {
+            if (Objects.equals(table.getIdColumn(), column)) {
                 AnnotationSpec.Builder columnAnnotation = AnnotationSpec.builder(TableId.class);
                 if (!table.isActiveDatabase()) {
                     columnAnnotation.addMember("value", "$S", column.getColumnName());

@@ -1,17 +1,19 @@
 package com.lxkplus.mybatisMaker.service.FileCreateService;
 
 import com.lxkplus.mybatisMaker.Mapper.DatabaseMapper;
-import com.lxkplus.mybatisMaker.dto.TableMessage;
-import com.lxkplus.mybatisMaker.po.CreateTableDDL;
-import com.lxkplus.mybatisMaker.po.ViewDDL;
+import com.lxkplus.mybatisMaker.conf.MybatisMakerConf;
+import com.lxkplus.mybatisMaker.dto.TableFlowContext;
+import com.lxkplus.mybatisMaker.entity.CreateTableDDL;
+import com.lxkplus.mybatisMaker.entity.ViewDDL;
 import com.lxkplus.mybatisMaker.service.PathService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Objects;
@@ -19,20 +21,27 @@ import java.util.Objects;
 @Service
 @Slf4j
 public class DDLService implements FileCreateService {
-    @Value("${mybatis-maker.datetime-format}")
-    String dateTimeFormat;
     SimpleDateFormat dateFormat;
     @Resource
     DatabaseMapper databaseMapper;
+
+    @Resource
+    MybatisMakerConf mybatisMakerConf;
     @Resource
     PathService pathService;
 
     @PostConstruct
     void init() {
-        dateFormat = new SimpleDateFormat(dateTimeFormat);
+        dateFormat = new SimpleDateFormat(mybatisMakerConf.getDatetimeFormat());
     }
 
-    public void createFile(TableMessage table) throws IOException {
+    @Override
+    public void deleteFile(TableFlowContext tableFlowContext) throws IOException {
+        Path ddlPath = tableFlowContext.getDDLPath();
+        FileUtils.deleteDirectory(ddlPath.getParent().toFile());
+    }
+
+    public void createFile(TableFlowContext table) throws IOException {
         Date currentDate = new Date();
         String currentTime = dateFormat.format(currentDate);
         String formatDDL = String.format("# %s\nuse %s;\n%s",
@@ -41,11 +50,11 @@ public class DDLService implements FileCreateService {
                 table.getDDL());
 
         if (table.getDDL() != null) {
-            pathService.createFile(table.getDDLPath(),formatDDL);
+            pathService.createFile(table.getDDLPath(), formatDDL);
         }
     }
 
-    public String getView(TableMessage table) {
+    public String getView(TableFlowContext table) {
         String DDL = "";
         if (Objects.equals(table.getTableType(), "BASE TABLE")) {
             CreateTableDDL createDDL = databaseMapper.getCreateDDL(table.getTableSchema(), table.getTableName());

@@ -9,5 +9,9 @@ import java.util.Set;
 @ConfigurationProperties(prefix = "mybatis-maker.mybatis")
 @Component
 public class MybatisMakerMybatisConf {
-    Set<String> datetimeNotShow;
+    Set<String> datetimeAutoInsertUpdate;
+    String mybatisEntityPackage;
+    String mapperPackage;
+    String xmlPackage;
+    String jdbcType;
 }

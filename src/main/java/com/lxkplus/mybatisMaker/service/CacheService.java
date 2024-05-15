@@ -19,7 +19,7 @@ public class CacheService {
     @PostConstruct
     public void init() {
         Cache<Long, List<Column>> cache = Caffeine.newBuilder()
-                .maximumSize(5)
+                .maximumSize(3)
                 .build();
         map = cache.asMap();
 
