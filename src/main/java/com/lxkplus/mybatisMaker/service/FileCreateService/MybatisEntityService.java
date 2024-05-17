@@ -10,7 +10,6 @@ import com.lxkplus.mybatisMaker.service.TemplateService;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.javapoet.AnnotationSpec;
@@ -23,7 +22,6 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.io.Serial;
 import java.io.Serializable;
-import java.nio.file.Path;
 
 @Service
 @Slf4j
@@ -36,12 +34,6 @@ public class MybatisEntityService implements FileCreateService {
     MybatisMakerConf mybatisMakerConf;
     @Resource
     LombokService lombokService;
-
-    @Override
-    public void deleteFile(TableFlowContext tableFlowContext) throws IOException {
-        Path mybatisBeanPath = tableFlowContext.getMybatisEntityPath();
-        FileUtils.deleteDirectory(mybatisBeanPath.getParent().toFile());
-    }
 
     @Override
     public void createFile(TableFlowContext table) throws IOException {

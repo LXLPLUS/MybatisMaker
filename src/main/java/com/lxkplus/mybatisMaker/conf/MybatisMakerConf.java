@@ -19,7 +19,6 @@ public class MybatisMakerConf {
     private boolean swagger3Exist;
     private boolean javaDocExist;
     private boolean useLombok;
-    private boolean clearHistory;
     boolean serializable;
     private String datetimeFormat;
     private String columnDocFormat;

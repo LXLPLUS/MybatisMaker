@@ -2,6 +2,7 @@ package com.lxkplus.mybatisMaker.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringSubstitutor;
@@ -13,7 +14,8 @@ import java.util.Map;
 @Slf4j
 public class TemplateService {
 
-    ObjectMapper objectMapper = new ObjectMapper();
+    @Resource
+    ObjectMapper objectMapper;
 
     public String replace(String str, Object bean) {
         if (StringUtils.isBlank(str)) {
@@ -24,6 +26,5 @@ public class TemplateService {
         StringSubstitutor stringSubstitutor = new StringSubstitutor(map, "{", "}");
         String replace = stringSubstitutor.replace(str);
         return StringUtils.strip(replace);
-
     }
 }

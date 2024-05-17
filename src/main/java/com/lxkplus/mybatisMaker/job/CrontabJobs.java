@@ -1,18 +1,17 @@
 package com.lxkplus.mybatisMaker.job;
 
 import com.lxkplus.mybatisMaker.Mapper.DatabaseMapper;
-import com.lxkplus.mybatisMaker.conf.MybatisMakerConf;
 import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.entity.Column;
 import com.lxkplus.mybatisMaker.enums.Constants;
 import com.lxkplus.mybatisMaker.service.CacheService;
+import com.lxkplus.mybatisMaker.service.CountService;
 import com.lxkplus.mybatisMaker.service.FileCreateService.*;
 import com.lxkplus.mybatisMaker.service.TableCompareService;
 import com.lxkplus.mybatisMaker.service.TableService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -22,9 +21,6 @@ import java.util.List;
 @Component
 @Slf4j
 public class CrontabJobs {
-
-    @Resource
-    MybatisMakerConf mybatisMakerConf;
 
     @Resource
     DatabaseMapper databaseMapper;
@@ -45,6 +41,8 @@ public class CrontabJobs {
     @Resource
     MybatisXMLService mybatisXMLService;
 
+    @Resource
+    CountService countService;
 
     List<FileCreateService> taskList = new ArrayList<>();
     @PostConstruct
@@ -56,16 +54,9 @@ public class CrontabJobs {
         taskList.add(mybatisXMLService);
     }
 
-    long changeTimeStamp = System.currentTimeMillis();
-
-    int count = 0;
-
-    boolean firstRun = true;
-
     @Scheduled(initialDelay = 5000L, fixedDelay = 2000L)
     public void Flash() {
-        count++;
-        MDC.put("count", Integer.toString(count));
+        countService.addCount();
         // 和缓存比较
         List<Column> newColumns = databaseMapper.getColumns();
         // 只保留符合规则的数据
@@ -73,12 +64,12 @@ public class CrontabJobs {
         List<Column> oldColumns = cacheService.get();
         if (!newColumns.equals(oldColumns)) {
             cacheService.put(newColumns);
-            changeTimeStamp = System.currentTimeMillis();
+            countService.change();
+        } else if (countService.timeFromLastCheck(Constants.TIME_INFO)) {
+            log.info("数据库表格{}秒没发生变更", countService.timeFromLastChange() / 1000);
+            countService.check();
+            return;
         } else {
-            long notChangeTimeStamp = (System.currentTimeMillis() - changeTimeStamp) / 1000;
-            if (notChangeTimeStamp > 0 && notChangeTimeStamp % Constants.TIME_INFO == 0) {
-                log.info("数据库表格{}秒没发生变更", notChangeTimeStamp);
-            }
             return;
         }
 
@@ -91,14 +82,6 @@ public class CrontabJobs {
 
             for (TableFlowContext table : tables) {
                 tableService.fillMessage(table);
-
-                // 只执行一次
-                if (firstRun && mybatisMakerConf.isClearHistory()) {
-                    for (FileCreateService fileCreateService : taskList) {
-                        fileCreateService.deleteFile(table);
-                    }
-                    firstRun = false;
-                }
                 for (FileCreateService fileCreateService : taskList) {
                     fileCreateService.createFile(table);
                 }

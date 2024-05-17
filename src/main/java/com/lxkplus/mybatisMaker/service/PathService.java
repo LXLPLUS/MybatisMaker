@@ -27,6 +27,7 @@ public class PathService {
                 pathName[i] = p.getPackageName().replace(".", File.separator);
             }
         }
+
         return Path.of(mybatisMakerConf.getCodeRoot(), StringUtils.join(pathName, File.separator));
     }
 

@@ -7,7 +7,8 @@ import com.lxkplus.mybatisMaker.enums.Constants;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
+import org.ahocorasick.trie.Token;
+import org.ahocorasick.trie.Trie;
 import org.apache.commons.lang3.StringUtils;
 import org.jdom2.DocType;
 import org.jdom2.Document;
@@ -23,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.StringJoiner;
 
@@ -38,9 +40,18 @@ public class MybatisXMLService implements FileCreateService {
     @Value("${mybatis-maker.mybatis.jdbc_type}")
     boolean showJdbcType;
 
+    Trie build;
+
     @PostConstruct
     void init() {
         xmlOutputter.getFormat().setIndent("\t");
+        Trie.TrieBuilder trieBuilder = Trie.builder();
+        trieBuilder.onlyWholeWords();
+        trieBuilder.addKeyword("</select>");
+        trieBuilder.addKeyword("</update>");
+        trieBuilder.addKeyword("</insert>");
+        trieBuilder.addKeyword("</delete>");
+        build = trieBuilder.build();
     }
 
     public Document createMybatisDocument(String namespace) {
@@ -61,12 +72,18 @@ public class MybatisXMLService implements FileCreateService {
     public void createXML(Document document, Path path) throws IOException {
         String s = xmlOutputter.outputString(document);
         StringJoiner sj = getStringJoiner(s);
-        s = sj.toString()
-                .replace("</select>", "\n\t</select>\n")
-                .replace("</update>", "\n\t</update>\n")
-                .replace("</insert>", "\n\t</insert>\n")
-                .replace("</delete>", "\n\t</delete>\n");
-        String[] split = s.split("\n");
+        Collection<Token> tokenize = build.tokenize(sj.toString());
+        StringBuilder stringBuilder = new StringBuilder();
+        for (Token token : tokenize) {
+            if (token.isMatch()) {
+                stringBuilder.append("\n\t");
+                stringBuilder.append(token.getFragment());
+                stringBuilder.append("\n");
+            } else {
+                stringBuilder.append(token.getFragment());
+            }
+        }
+        String[] split = stringBuilder.toString().split("\n");
         for (int i = 0; i < split.length; i++) {
             if (!StringUtils.isBlank(split[i]) && !StringUtils.startsWith(split[i].strip(), "<")) {
                 split[i] = "\t\t" + split[i].replace("&lt;", "<")
@@ -81,10 +98,8 @@ public class MybatisXMLService implements FileCreateService {
         String[] split = s.split("\n");
         StringJoiner sj = new StringJoiner("\n");
         for (String str : split) {
-            if (str.strip().startsWith("<insert")
-                    || str.strip().startsWith("<select")
-                    || str.strip().startsWith("<update")
-                    || str.strip().startsWith("<delete")) {
+            if (StringUtils.startsWithAny(str.strip(), "<insert", "<select", "<update", "<delete"))
+            {
                 String[] split1 = str.split("(?<=>)", 2);
                 sj.add(split1[0]);
                 sj.add(split1[1]);
@@ -94,13 +109,6 @@ public class MybatisXMLService implements FileCreateService {
             }
         }
         return sj;
-    }
-
-
-    @Override
-    public void deleteFile(TableFlowContext tableFlowContext) throws IOException {
-        Path mybatisXMLPath = tableFlowContext.getMybatisXMLPath();
-        FileUtils.deleteDirectory(mybatisXMLPath.getParent().toFile());
     }
 
     @Override
@@ -177,7 +185,7 @@ public class MybatisXMLService implements FileCreateService {
             idResult.setAttribute("property", idColumn.getJavaColumnName());
             idResult.setAttribute("column", idColumn.getColumnName());
             if (showJdbcType) {
-                idResult.setAttribute("jdbcType", idColumn.getJdbcType());
+                idResult.setAttribute("jdbcType", idColumn.getJdbcType().getName());
             }
             resultMap.addContent(idResult);
         }
@@ -189,7 +197,7 @@ public class MybatisXMLService implements FileCreateService {
             result.setAttribute("property", column.getJavaColumnName());
             result.setAttribute("column", column.getColumnName());
             if (showJdbcType) {
-                result.setAttribute("jdbcType", column.getJdbcType());
+                result.setAttribute("jdbcType", column.getJdbcType().getName());
             }
             resultMap.addContent(result);
         }

@@ -8,7 +8,6 @@ import com.lxkplus.mybatisMaker.enums.TemplateObject;
 import com.lxkplus.mybatisMaker.service.PathService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.javapoet.*;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import javax.lang.model.element.Modifier;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 
 @Service
@@ -26,12 +24,6 @@ public class MapperService implements FileCreateService {
     MybatisInterFaceConf mybatisInterFaceConf;
     @Resource
     PathService pathService;
-
-    @Override
-    public void deleteFile(TableFlowContext tableFlowContext) throws IOException {
-        Path mybatisMapperPath = tableFlowContext.getMybatisMapperPath();
-        FileUtils.deleteDirectory(mybatisMapperPath.getParent().toFile());
-    }
 
     @Override
     public void createFile(TableFlowContext table) throws IOException {

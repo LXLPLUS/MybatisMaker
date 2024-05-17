@@ -143,8 +143,6 @@ mybatis-maker:
         CURSOR: 'String'
         TINYINT: String
 
-    # 是否在第一次执行前删除历史数据
-    clear_history: true
 
 
 mybatis-plus:

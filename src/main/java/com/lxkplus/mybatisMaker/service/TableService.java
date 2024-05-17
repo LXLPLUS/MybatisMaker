@@ -10,6 +10,7 @@ import com.lxkplus.mybatisMaker.enums.Constants;
 import com.lxkplus.mybatisMaker.enums.Package;
 import com.lxkplus.mybatisMaker.service.FileCreateService.DDLService;
 import com.lxkplus.mybatisMaker.utils.CovertUtils;
+import com.lxkplus.mybatisMaker.utils.JDBCTypeUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -123,7 +124,7 @@ public class TableService {
         return CovertUtils.coverToUpperCamel(schemaName) + CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, tableNameTrim);
     }
 
-    public void fillMessage(TableFlowContext tableFlowContext) throws ClassNotFoundException {
+    public void fillMessage(TableFlowContext tableFlowContext) throws ClassNotFoundException, SQLException {
 
         // 是否带数据库前缀
         if (tableFlowContext.getTableSchema().equals(activeDatabase)) {
@@ -182,14 +183,15 @@ public class TableService {
 
         // 通过配置文件实现类型映射
         Map<String, String> typeMapper = mybatisMakerConf.getTypeMapper();
+
         for (ColumnWithJavaStatus column : tableFlowContext.getColumns()) {
-            if (simpleNameMap.containsKey(typeMapper.get(column.getJdbcType()))) {
-                Type type = simpleNameMap.get(typeMapper.get(column.getJdbcType()));
+            if (simpleNameMap.containsKey(typeMapper.get(column.getJdbcType().getName()))) {
+                Type type = simpleNameMap.get(typeMapper.get(column.getJdbcType().getName()));
                 column.setJavaType(type);
             } else if (column.getJdbcType() == null) {
                 column.setJavaType(String.class);
             } else {
-                column.setJavaType(Class.forName(typeMapper.get(column.getJdbcType())));
+                column.setJavaType(Class.forName(typeMapper.get(column.getJdbcType().getName())));
             }
         }
 
@@ -197,10 +199,9 @@ public class TableService {
         for (ColumnWithJavaStatus column : tableFlowContext.getColumns()) {
             if (column.getOrdinalPosition() == 1 && "PRI".equals(column.getColumnKey())) {
                 tableFlowContext.setIdColumn(column);
-                if (Set.of(JDBCType.valueOf(Types.BIGINT).getName(), JDBCType.valueOf(Types.INTEGER).getName())
-                        .contains(tableFlowContext.getIdColumn().getJdbcType())) {
+                if (JDBCTypeUtil.EqualsAny(column.getJdbcType(), JDBCType.INTEGER, JDBCType.BIGINT)) {
                     tableFlowContext.setIdType(IdType.AUTO);
-                } else if (Set.of(JDBCType.valueOf(Types.VARCHAR).getName(), JDBCType.CHAR.getName()).contains(tableFlowContext.getIdColumn().getJdbcType())) {
+                } else if (JDBCTypeUtil.EqualsAny(column.getJdbcType(), JDBCType.VARCHAR, JDBCType.CHAR)) {
                     tableFlowContext.setIdType(IdType.ASSIGN_UUID);
                 }
                 break;

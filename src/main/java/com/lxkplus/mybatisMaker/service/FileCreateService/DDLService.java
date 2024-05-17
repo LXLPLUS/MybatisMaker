@@ -35,12 +35,6 @@ public class DDLService implements FileCreateService {
         dateFormat = new SimpleDateFormat(mybatisMakerConf.getDatetimeFormat());
     }
 
-    @Override
-    public void deleteFile(TableFlowContext tableFlowContext) throws IOException {
-        Path ddlPath = tableFlowContext.getDDLPath();
-        FileUtils.deleteDirectory(ddlPath.getParent().toFile());
-    }
-
     public void createFile(TableFlowContext table) throws IOException {
         Date currentDate = new Date();
         String currentTime = dateFormat.format(currentDate);

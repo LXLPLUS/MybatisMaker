@@ -22,7 +22,6 @@ public class CacheService {
                 .maximumSize(3)
                 .build();
         map = cache.asMap();
-
     }
 
     public List<Column> get() {

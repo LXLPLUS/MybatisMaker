@@ -16,7 +16,7 @@ public class JdbcTypeService {
     @Resource
     SqlSessionFactory sqlSessionFactory;
 
-    public void  fillJdbcType(TableFlowContext tableFlowContext) {
+    public void  fillJdbcType(TableFlowContext tableFlowContext) throws SQLException {
         try (SqlSession session = sqlSessionFactory.openSession()) {
             // 加载数据库驱动
             DatabaseMetaData metaData = session.getConnection().getMetaData();
@@ -28,11 +28,9 @@ public class JdbcTypeService {
                     return;
                 }
                 int columnType = tables.getInt("DATA_TYPE");
-                tableFlowContext.getColumns().get(index).setJdbcType(JDBCType.valueOf(columnType).getName());
+                tableFlowContext.getColumns().get(index).setJdbcType(JDBCType.valueOf(columnType));
                 index++;
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 }

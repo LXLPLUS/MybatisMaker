@@ -1,5 +1,6 @@
 package com.lxkplus.mybatisMaker.service;
 
+import com.google.common.base.CaseFormat;
 import com.lxkplus.mybatisMaker.Mapper.DatabaseMapper;
 import com.lxkplus.mybatisMaker.conf.MybatisMakerMybatisConf;
 import com.lxkplus.mybatisMaker.conf.SyncConf;
@@ -8,13 +9,16 @@ import com.lxkplus.mybatisMaker.dto.SuitRuler;
 import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.entity.Column;
 import com.lxkplus.mybatisMaker.entity.InformationSchemaTables;
+import com.lxkplus.mybatisMaker.enums.Constants;
 import com.lxkplus.mybatisMaker.utils.JDBCTypeUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
-import java.sql.Types;
+import java.sql.JDBCType;
 import java.util.*;
 
 @Component
@@ -23,8 +27,6 @@ public class TableCompareService {
 
     @Resource
     SyncConf syncConf;
-    @Resource
-    ColumnService columnService;
     @Resource
     private DatabaseMapper databaseMapper;
     List<SuitRuler> tableAllowList = new ArrayList<>();
@@ -65,19 +67,9 @@ public class TableCompareService {
         tableNotAllowList.add(suitRuler);
     }
 
-    public List<Column> getCreateColumn(List<Column> old, List<Column> newColumn) {
-        HashSet<Column> oldColumnSet = new HashSet<>(old);
-        return newColumn.stream().filter(x -> !oldColumnSet.contains(x)).toList();
-    }
-
-    public List<Column> getDeleteColumn(List<Column> old, List<Column> newColumn) {
-        HashSet<Column> newColumnSet = new HashSet<>(newColumn);
-        return old.stream().filter(x -> !newColumnSet.contains(x)).toList();
-    }
-
     public void infoCreateAndDelete(List<Column> old, List<Column> newColumn) {
-        List<Column> create = this.getCreateColumn(old, newColumn);
-        List<Column> delete = this.getDeleteColumn(old, newColumn);
+        Collection<Column> create = CollectionUtils.subtract(newColumn, old);
+        Collection<Column> delete = CollectionUtils.subtract(old, newColumn);
         create.forEach(x -> log.info("新建的列: {}", x));
         delete.forEach(x -> log.info("删除的列: {}", x));
     }
@@ -85,15 +77,11 @@ public class TableCompareService {
     public List<TableFlowContext> getCreateOrDiffTable(List<Column> old, List<Column> newColumn) {
 
         // 获取新表和旧表的所有diff列
-        LinkedHashSet<Column> oldSet = new LinkedHashSet<>(old);
-        LinkedHashSet<Column> newSet = new LinkedHashSet<>(newColumn);
-        LinkedHashSet<Column> allData = new LinkedHashSet<>(newSet);
-        allData.addAll(oldSet);
-        allData.removeIf(x -> oldSet.contains(x) && newSet.contains(x));
+        Collection<Column> disjunction = CollectionUtils.disjunction(old, newColumn);
 
         // 获取存在diff的表格并填充基本信息
         LinkedHashSet<TableFlowContext> diffTables = new LinkedHashSet<>();
-        for (Column allDatum : allData) {
+        for (Column allDatum : disjunction) {
             diffTables.add(TableFlowContext.fromColumn(allDatum));
         }
 
@@ -110,11 +98,10 @@ public class TableCompareService {
             List<TableFlowContext> list = diffTables.stream()
                     .filter(x -> Objects.equals(column.getTableSchema(), x.getTableSchema()) && Objects.equals(column.getTableName(), x.getTableName()))
                     .toList();
-            if (list.isEmpty()) {
-                continue;
-            }
-            ColumnWithJavaStatus explain = columnService.explain(column);
+        if (!list.isEmpty()) {
+            ColumnWithJavaStatus explain = this.explain(column);
             list.get(0).getColumns().add(explain);
+            }
         }
 
         return new ArrayList<>(diffTables);
@@ -131,7 +118,7 @@ public class TableCompareService {
 
         for (ColumnWithJavaStatus column : tableFlowContext.getColumns()) {
             if (mybatisMakerMybatisConf.getDatetimeAutoInsertUpdate().contains(column.getColumnName()) &&
-            Set.of(Types.DATE, Types.TIME, Types.TIME_WITH_TIMEZONE, Types.TIMESTAMP).contains(JDBCTypeUtil.getJDBCTypeNumber(column.getJdbcType())) &&
+            JDBCTypeUtil.EqualsAny(column.getJdbcType(), JDBCType.DATE, JDBCType.TIME, JDBCType.TIMESTAMP, JDBCType.TIME_WITH_TIMEZONE, JDBCType.TIMESTAMP_WITH_TIMEZONE) &&
             column.getColumnDefault() != null) {
                 dateTimeNotWatch.add(column);
             }
@@ -139,12 +126,9 @@ public class TableCompareService {
         tableFlowContext.setDateTimeAutoColumns(dateTimeNotWatch);
     }
 
-
-
-
     public List<Column> getSuitColumn(List<Column> columns) {
         // 保留的留下
-        HashSet<Column> objects = new HashSet<>();
+        HashSet<Column> objects = new HashSet<>(columns);
         for (Column column : columns) {
             for (SuitRuler suitRuler : tableAllowList) {
                 if (starEquals(column.getTableSchema(), suitRuler.getTableSchema())
@@ -167,6 +151,26 @@ public class TableCompareService {
             }
         }
         return new ArrayList<>(suitTables);
+    }
+
+    public ColumnWithJavaStatus explain(Column column) {
+        ColumnWithJavaStatus convert = ColumnWithJavaStatus.convert(column);
+
+        // 格式化mysql名 -> java 列名
+        String columnName = column.getColumnName()
+                .replace(" ", "_")
+                .replaceAll(Constants.JAVA_NOT_SUPPORT_CHAR, "");
+        if (StringUtils.isBlank(columnName)) {
+            columnName = "undefined_" + column.getOrdinalPosition();
+        } else if (columnName.charAt(0) >= '0' && columnName.charAt(0) <= '9') {
+            columnName = "number_" + columnName;
+        } else {
+            columnName = CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, columnName);
+            convert.setConvertMysql2JavaStatus(true);
+        }
+        convert.setJavaColumnName(columnName);
+
+        return convert;
     }
 
 }

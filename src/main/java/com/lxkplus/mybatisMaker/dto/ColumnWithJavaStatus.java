@@ -4,6 +4,7 @@ import com.lxkplus.mybatisMaker.entity.Column;
 import lombok.Data;
 
 import java.lang.reflect.Type;
+import java.sql.JDBCType;
 
 @Data
 public class ColumnWithJavaStatus {
@@ -31,7 +32,7 @@ public class ColumnWithJavaStatus {
     String srsId;
     String javaColumnName;
     String idType;
-    String jdbcType;
+    JDBCType jdbcType;
     boolean convertMysql2JavaStatus;
     Type javaType;
     /**
