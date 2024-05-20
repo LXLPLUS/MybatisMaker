@@ -1,9 +1,11 @@
-package com.lxkplus.mybatisMaker.service.FileCreateService;
+package com.lxkplus.mybatisMaker.service.FileCreateService.mybatis;
 
+import com.lxkplus.mybatisMaker.conf.GenerateConf;
 import com.lxkplus.mybatisMaker.conf.MybatisMakerConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
 import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.enums.TemplateObject;
+import com.lxkplus.mybatisMaker.service.FileCreateService.FileCreateService;
 import com.lxkplus.mybatisMaker.service.LombokService;
 import com.lxkplus.mybatisMaker.service.PathService;
 import com.lxkplus.mybatisMaker.service.TemplateService;
@@ -35,11 +37,16 @@ public class MybatisEntityService implements FileCreateService {
     @Resource
     LombokService lombokService;
 
+    @Resource
+    GenerateConf generateConf;
+
+    @Override
+    public boolean generate() {
+        return generateConf.isMybatis();
+    }
+
     @Override
     public void createFile(TableFlowContext table) throws IOException {
-        if (table.getMybatisPackage() == null) {
-            return;
-        }
         TypeSpec.Builder builder = TypeSpec.classBuilder(table.getJavaBeanName())
                 .addModifiers(Modifier.PUBLIC);
 
@@ -63,7 +70,7 @@ public class MybatisEntityService implements FileCreateService {
         }
 
         if (mybatisMakerConf.isJavaDocExist()) {
-            builder.addJavadoc(table.getDatabaseWithTableName());
+            builder.addJavadoc(table.getSafeTableName());
         }
 
         if (mybatisMakerConf.isSwagger3Exist()) {
@@ -117,7 +124,8 @@ public class MybatisEntityService implements FileCreateService {
             builder.addMethod(lombokService.equalsBuilder(table));
         }
 
-        JavaFile javaClassBuilder = JavaFile.builder(table.getMybatisPackage().getPackageName(), builder.build()).build();
+        JavaFile javaClassBuilder = JavaFile.builder(table.getMybatisBeanPackage().getPackageName(), builder.build())
+                .build();
         String string = javaClassBuilder.toString()
                 .replace(TemplateObject.class.getTypeName(), table.getFullyQualifiedName())
                 .replace(TemplateObject.class.getSimpleName(), table.getJavaBeanName());

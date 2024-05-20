@@ -6,5 +6,7 @@ import java.io.IOException;
 
 public interface FileCreateService {
 
+    boolean generate();
+
     void createFile(TableFlowContext table) throws IOException;
 }

@@ -47,21 +47,30 @@ public class TableFlowContext {
      */
     Package mybatisXmlPackage;
     Package mybatisBeanPackage;
-    Package mybatisPackage;
-    Package MybatisMapperPackage;
+    Package mybatisMapperPackage;
 
     /**
      * mybatis-plus package
      */
     Package mybatisPlusPackage;
+    Package mybatisPlusMapperPackage;
+    Package mybatisPlusXmlPackage;
     /**
      * mybatis path
      * 文件地址
      */
-    Path mybatisXMLPath;
+    Path mybatisXmlPath;
     Path mybatisEntityPath;
-    Path mybatisPlusEntityPath;
     Path MybatisMapperPath;
+
+    /**
+     * mybatis-plus path
+     * 文件地址
+     */
+    Path mybatisPlusXmlPath;
+    Path mybatisPlusEntityPath;
+    Path MybatisPlusMapperPath;
+
     String mapperName;
     /**
      * xml 限定名
@@ -69,7 +78,10 @@ public class TableFlowContext {
     String mybatisResultMapId;
 
     boolean activeDatabase;
-    String databaseWithTableName;
+    String safeTableName;
+
+    List<Jpa2MybatisBuilder> jpa2MybatisBuilders = new ArrayList<>();
+
 
     public static TableFlowContext fromColumn(Column column) {
         TableFlowContext tableFlowContext = new TableFlowContext();

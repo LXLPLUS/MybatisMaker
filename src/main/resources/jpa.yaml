@@ -1,0 +1,5 @@
+- table: "*.*"
+  funcName: findAll
+
+- table: "*.*"
+  funcName: countByColumn1AndColumn2AndId

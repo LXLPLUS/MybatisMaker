@@ -24,17 +24,28 @@ mybatis-maker:
             - "sakila.*"
             - "world.*"
 
+    # 是否生成对应的内容
+    generate:
+        mybatis: true
+        mybatis-plus: true
+
     package:
         # 生成sql的位置
         ddl-package: sql
+
+    mybatis-plus:
         # mybatis-plus代码生成的package
-        mybatis-plus-bean-package: lxkplus.mybatis-plus
+        mybatis-plus-bean-package: mybatis-plus.entity
+        mapper-package: mybatis-plus.mapper
+        xml-package: mybatis-plus.xml
+
 
     mybatis:
         # table对应的路径
         mybatis-entity-package: mybatis.entity
         # mapper
         mapper-package: mybatis.mapper
+        # xml
         xml-package: mybatis.xml
         sql:
             # 视图不能生成插入语句
@@ -48,7 +59,8 @@ mybatis-maker:
             insertList: true
             deleteByIds: true
             selectByIds: true
-            selectAll: true
+            # 通过jpa实现了
+            # selectAll: true
 
         # 由数据库自动生成的时间，update和insert不参与
         # 必须带默认值CURRENT_TIMESTAMP或者ON UPDATE CURRENT_TIMESTAMP

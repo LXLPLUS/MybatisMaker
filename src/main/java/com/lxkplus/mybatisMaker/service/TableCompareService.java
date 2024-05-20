@@ -5,6 +5,7 @@ import com.lxkplus.mybatisMaker.Mapper.DatabaseMapper;
 import com.lxkplus.mybatisMaker.conf.MybatisMakerMybatisConf;
 import com.lxkplus.mybatisMaker.conf.SyncConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
+import com.lxkplus.mybatisMaker.dto.SchemaTable;
 import com.lxkplus.mybatisMaker.dto.SuitRuler;
 import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.entity.Column;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.sql.JDBCType;
 import java.util.*;
+import java.util.function.Predicate;
 
 @Component
 @Slf4j
@@ -68,10 +70,49 @@ public class TableCompareService {
     }
 
     public void infoCreateAndDelete(List<Column> old, List<Column> newColumn) {
+
         Collection<Column> create = CollectionUtils.subtract(newColumn, old);
         Collection<Column> delete = CollectionUtils.subtract(old, newColumn);
-        create.forEach(x -> log.info("新建的列: {}", x));
-        delete.forEach(x -> log.info("删除的列: {}", x));
+
+        LinkedHashMap<SchemaTable, List<Column>> createMap = new LinkedHashMap<>();
+        LinkedHashMap<SchemaTable, List<Column>> deleteMap = new LinkedHashMap<>();
+
+        for (Column column : create) {
+            SchemaTable convert = SchemaTable.convert(column);
+            createMap.computeIfAbsent(convert, k -> new ArrayList<>()).add(column);
+        }
+
+        for (Column column : delete) {
+            SchemaTable convert = SchemaTable.convert(column);
+            deleteMap.computeIfAbsent(convert, k -> new ArrayList<>()).add(column);
+        }
+
+
+        for (Map.Entry<SchemaTable, List<Column>> entry : createMap.entrySet()) {
+            log.info("命名空间: {} 表名: {}", entry.getKey().getTableSchema(), entry.getKey().getTableName());
+            List<Column> value = entry.getValue();
+            value.sort(Comparator.comparingInt(Column::getOrdinalPosition));
+            for (Column column : value) {
+                log.info("新建的列: {}", column);
+            }
+            value = deleteMap.getOrDefault(entry.getKey(), new ArrayList<>());
+            value.sort(Comparator.comparingInt(Column::getOrdinalPosition));
+            for (Column column : value) {
+                log.info("删除的列: {}", column);
+            }
+        }
+
+        for (Map.Entry<SchemaTable, List<Column>> entry : deleteMap.entrySet()) {
+            if (createMap.containsKey(entry.getKey())) {
+                continue;
+            }
+            log.info("命名空间: {} 表名: {}", entry.getKey().getTableSchema(), entry.getKey().getTableName());
+            List<Column> value = entry.getValue();
+            value.sort(Comparator.comparingInt(Column::getOrdinalPosition));
+            for (Column column : value) {
+                log.info("删除的列: {}", column);
+            }
+        }
     }
 
     public List<TableFlowContext> getCreateOrDiffTable(List<Column> old, List<Column> newColumn) {
@@ -95,8 +136,10 @@ public class TableCompareService {
 
         // 将列挂载对应的表上
         for (Column column : newColumn) {
+            Predicate<TableFlowContext> p1 = x -> x.getTableSchema().equals(column.getTableSchema());
+            Predicate<TableFlowContext> p2 = x -> x.getTableName().equals(column.getTableName());
             List<TableFlowContext> list = diffTables.stream()
-                    .filter(x -> Objects.equals(column.getTableSchema(), x.getTableSchema()) && Objects.equals(column.getTableName(), x.getTableName()))
+                    .filter(p1.and(p2))
                     .toList();
         if (!list.isEmpty()) {
             ColumnWithJavaStatus explain = this.explain(column);

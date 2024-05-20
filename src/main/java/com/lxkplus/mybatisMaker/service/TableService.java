@@ -4,11 +4,17 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.google.common.base.CaseFormat;
 import com.lxkplus.mybatisMaker.conf.MybatisMakerConf;
 import com.lxkplus.mybatisMaker.conf.MybatisMakerMybatisConf;
+import com.lxkplus.mybatisMaker.conf.MybatisPlusConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
+import com.lxkplus.mybatisMaker.dto.JpaRow;
 import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.enums.Constants;
 import com.lxkplus.mybatisMaker.enums.Package;
 import com.lxkplus.mybatisMaker.service.FileCreateService.DDLService;
+import com.lxkplus.mybatisMaker.service.FileCreateService.Jpa.JpaFilter;
+import com.lxkplus.mybatisMaker.service.FileCreateService.Jpa.JpaLoadService;
+import com.lxkplus.mybatisMaker.service.FileCreateService.Jpa.JpaService;
+import com.lxkplus.mybatisMaker.utils.ColumnSafeUtils;
 import com.lxkplus.mybatisMaker.utils.CovertUtils;
 import com.lxkplus.mybatisMaker.utils.JDBCTypeUtil;
 import jakarta.annotation.PostConstruct;
@@ -31,6 +37,15 @@ import java.util.*;
 @Service
 @Slf4j
 public class TableService {
+
+    @Resource
+    JpaLoadService jpaLoadService;
+
+    @Resource
+    JpaFilter jpaFilter;
+
+    @Resource
+    JpaService jpaService;
     @Resource
     MybatisMakerConf mybatisMakerConf;
     @Resource
@@ -42,12 +57,13 @@ public class TableService {
     DDLService ddlService;
     @Value("${mybatis-maker.package.ddl-package}")
     String DDLPackage;
-    @Value("${mybatis-maker.package.mybatis-plus-bean-package}")
-    String mybatisPlusPackage;
     @Value("${mybatis-maker.mybatis.jdbc_type}")
     boolean showJdbcType;
     @Value("${mybatis-maker.connect.active_database:null}")
     String activeDatabase;
+
+    @Resource
+    MybatisPlusConf mybatisPlusConf;
 
     @Resource
     TableCompareService tableCompareService;
@@ -131,11 +147,9 @@ public class TableService {
             tableFlowContext.setActiveDatabase(true);
         }
 
-        if (tableFlowContext.isActiveDatabase()) {
-            tableFlowContext.setDatabaseWithTableName(tableFlowContext.getTableName());
-        } else {
-            tableFlowContext.setDatabaseWithTableName(tableFlowContext.getTableSchema() + "." + tableFlowContext.getTableName());
-        }
+        String s = ColumnSafeUtils.safeTableName(tableFlowContext);
+        tableFlowContext.setSafeTableName(s);
+
 
         // 进行名称转化
         String tableName = tableFlowContext.getTableName();
@@ -145,25 +159,41 @@ public class TableService {
         tableFlowContext.setMapperName(tableFlowContext.getJavaBeanName() + "Mapper");
         tableFlowContext.setFullyQualifiedName(mybatisMakerMybatisConf.getMybatisEntityPackage() + "." + tableFlowContext.getJavaBeanName());
         /*
-         * package
+         * mybatis package
          */
         tableFlowContext.setMybatisXmlPackage(new Package(mybatisMakerMybatisConf.getXmlPackage()));
-        tableFlowContext.setMybatisPackage(new Package(mybatisMakerMybatisConf.getMybatisEntityPackage()));
-        tableFlowContext.setMybatisPlusPackage(new Package(mybatisPlusPackage));
+        tableFlowContext.setMybatisBeanPackage(new Package(mybatisMakerMybatisConf.getMybatisEntityPackage()));
         tableFlowContext.setMybatisMapperPackage(new Package(mybatisMakerMybatisConf.getMapperPackage()));
+
+        /*
+            mybatis-plus package
+         */
+        tableFlowContext.setMybatisPlusPackage(new Package(mybatisPlusConf.getMybatisPlusBeanPackage()));
+        tableFlowContext.setMybatisPlusMapperPackage(new Package(mybatisPlusConf.getMapperPackage()));
+        tableFlowContext.setMybatisPlusXmlPackage(new Package(mybatisPlusConf.getXmlPackage()));
+
         tableFlowContext.setDDLPackage(new Package(DDLPackage));
 
         /*
-         * Path
+         * mybatis Path
          */
         Path xmlPath = pathService.getPath(tableFlowContext.getMybatisXmlPackage(), tableFlowContext.getMapperName() + ".xml");
-        tableFlowContext.setMybatisXMLPath(xmlPath);
-        Path mybatisPath = pathService.getPath(tableFlowContext.getMybatisPackage(), tableFlowContext.getJavaBeanName() + ".java");
+        tableFlowContext.setMybatisXmlPath(xmlPath);
+        Path mybatisPath = pathService.getPath(tableFlowContext.getMybatisBeanPackage(), tableFlowContext.getJavaBeanName() + ".java");
         tableFlowContext.setMybatisEntityPath(mybatisPath);
-        Path mybatisPlusPath = pathService.getPath(tableFlowContext.getMybatisPlusPackage(), tableFlowContext.getJavaBeanName() + ".java");
-        tableFlowContext.setMybatisPlusEntityPath(mybatisPlusPath);
         Path mapperPath = pathService.getPath(tableFlowContext.getMybatisMapperPackage(), tableFlowContext.getMapperName() + ".java");
         tableFlowContext.setMybatisMapperPath(mapperPath);
+
+        /*
+         * mybatis-plus Path
+         */
+        Path mybatisPlusPath = pathService.getPath(tableFlowContext.getMybatisPlusPackage(), tableFlowContext.getJavaBeanName() + ".java");
+        tableFlowContext.setMybatisPlusEntityPath(mybatisPlusPath);
+        Path mybatisPlusMapperPath = pathService.getPath(tableFlowContext.getMybatisPlusMapperPackage(), tableFlowContext.getMapperName() + ".java");
+        tableFlowContext.setMybatisPlusMapperPath(mybatisPlusMapperPath);
+        Path mybatisPlusXmlPath = pathService.getPath(tableFlowContext.getMybatisPlusXmlPackage(), tableFlowContext.getMapperName() + ".xml");
+        tableFlowContext.setMybatisPlusXmlPath(mybatisPlusXmlPath);
+
         Path ddlPath = pathService.getPath(tableFlowContext.getDDLPackage(), tableFlowContext.getTableSchema() + "-" + tableFlowContext.getJavaBeanName() + ".sql");
         tableFlowContext.setDDLPath(ddlPath);
 
@@ -209,5 +239,11 @@ public class TableService {
         }
 
         tableCompareService.tagNotWatchTime(tableFlowContext);
+
+        for (JpaRow jpaRow : jpaLoadService.getJpaRowList()) {
+            if (jpaFilter.rulerEquals(jpaRow.getTable(), tableFlowContext)) {
+                jpaService.convertToMybatis(tableFlowContext, jpaRow.getFuncName());
+            }
+        }
     }
 }

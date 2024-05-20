@@ -1,19 +1,26 @@
 package com.lxkplus.mybatisMaker;
 
+import com.lxkplus.mybatisMaker.job.CrontabJobs;
+import com.lxkplus.mybatisMaker.service.PersistenceService;
 import jakarta.annotation.Resource;
-import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.sql.SQLException;
+import java.io.IOException;
 
 @SpringBootTest
 public class Test {
 
     @Resource
-    SqlSessionFactory sqlSessionFactory;
+    CrontabJobs crontabJobs;
+
+    @Resource
+    PersistenceService persistenceService;
     
 
     @org.junit.jupiter.api.Test
-    public void test() throws SQLException {
+    public void test() throws IOException {
+        persistenceService.clearCache();
+        crontabJobs.flash();
+
     }
 }

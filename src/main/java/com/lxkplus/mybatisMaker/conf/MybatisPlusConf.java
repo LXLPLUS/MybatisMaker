@@ -4,14 +4,11 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.util.Set;
 @Data
-@ConfigurationProperties(prefix = "mybatis-maker.mybatis")
+@ConfigurationProperties(prefix = "mybatis-maker.mybatis-plus")
 @Component
-public class MybatisMakerMybatisConf {
-    Set<String> datetimeAutoInsertUpdate;
-    String mybatisEntityPackage;
+public class MybatisPlusConf {
+    String mybatisPlusBeanPackage;
     String mapperPackage;
     String xmlPackage;
-    boolean jdbcType;
 }

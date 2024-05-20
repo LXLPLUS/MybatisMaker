@@ -16,12 +16,14 @@ import java.util.concurrent.ConcurrentMap;
 @Slf4j
 public class CacheService {
     ConcurrentMap<Long, List<Column>> map = new ConcurrentHashMap<>();
+
     @PostConstruct
     public void init() {
         Cache<Long, List<Column>> cache = Caffeine.newBuilder()
                 .maximumSize(3)
                 .build();
         map = cache.asMap();
+
     }
 
     public List<Column> get() {
@@ -30,7 +32,6 @@ public class CacheService {
     }
 
     public void put(List<Column> columns) {
-        long l = System.currentTimeMillis();
-        map.put(l, columns);
+        map.put(System.currentTimeMillis(), columns);
     }
 }

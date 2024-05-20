@@ -9,11 +9,9 @@ import com.lxkplus.mybatisMaker.service.PathService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Objects;
@@ -35,10 +33,19 @@ public class DDLService implements FileCreateService {
         dateFormat = new SimpleDateFormat(mybatisMakerConf.getDatetimeFormat());
     }
 
+    @Override
+    public boolean generate() {
+        return true;
+    }
+
     public void createFile(TableFlowContext table) throws IOException {
         Date currentDate = new Date();
         String currentTime = dateFormat.format(currentDate);
-        String formatDDL = String.format("# %s\nuse %s;\n%s",
+        String formatDDL = String.format("""
+                        # %s
+                        use %s;
+                        %s;
+                        """,
                 currentTime,
                 table.getTableSchema(),
                 table.getDDL());

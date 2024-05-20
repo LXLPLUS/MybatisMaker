@@ -1,19 +1,21 @@
-package com.lxkplus.mybatisMaker.service.FileCreateService;
+package com.lxkplus.mybatisMaker.service.FileCreateService.mybatisPlus;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.lxkplus.mybatisMaker.conf.GenerateConf;
 import com.lxkplus.mybatisMaker.conf.MybatisMakerConf;
+import com.lxkplus.mybatisMaker.conf.MybatisPlusConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
 import com.lxkplus.mybatisMaker.dto.TableFlowContext;
+import com.lxkplus.mybatisMaker.service.FileCreateService.FileCreateService;
 import com.lxkplus.mybatisMaker.service.LombokService;
 import com.lxkplus.mybatisMaker.service.PathService;
 import com.lxkplus.mybatisMaker.service.TemplateService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.javapoet.AnnotationSpec;
 import org.springframework.javapoet.FieldSpec;
 import org.springframework.javapoet.JavaFile;
@@ -29,8 +31,9 @@ import java.util.Objects;
 @Service
 @Slf4j
 public class MybatisPlusEntityService implements FileCreateService {
-    @Value("${mybatis-maker.mybatis-plus.mybatis-plus:null}")
-    String packageName;
+
+    @Resource
+    MybatisPlusConf mybatisPlusConf;
     @Resource
     PathService pathService;
     @Resource
@@ -40,11 +43,15 @@ public class MybatisPlusEntityService implements FileCreateService {
     @Resource
     MybatisMakerConf mybatisMakerConf;
 
+    @Resource
+    GenerateConf generateConf;
+    @Override
+    public boolean generate() {
+        return generateConf.isMybatisPlus();
+    }
+
     @Override
     public void createFile(@NotNull TableFlowContext table) throws IOException {
-        if (packageName == null) {
-            return;
-        }
 
         TypeSpec.Builder builder = TypeSpec.classBuilder(table.getJavaBeanName())
                 .addModifiers(Modifier.PUBLIC);
@@ -105,7 +112,7 @@ public class MybatisPlusEntityService implements FileCreateService {
             builder.addField(columnBuilder.build());
         }
 
-        JavaFile javaClassBuilder = JavaFile.builder(packageName, builder.build()).build();
+        JavaFile javaClassBuilder = JavaFile.builder(mybatisPlusConf.getMybatisPlusBeanPackage(), builder.build()).build();
         pathService.createFile(table.getMybatisPlusEntityPath(), javaClassBuilder.toString());
     }
 }

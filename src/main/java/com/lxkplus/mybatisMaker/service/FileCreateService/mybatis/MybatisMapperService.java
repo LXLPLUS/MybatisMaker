@@ -1,10 +1,13 @@
-package com.lxkplus.mybatisMaker.service.FileCreateService;
+package com.lxkplus.mybatisMaker.service.FileCreateService.mybatis;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.lxkplus.mybatisMaker.conf.GenerateConf;
 import com.lxkplus.mybatisMaker.conf.MybatisInterFaceConf;
+import com.lxkplus.mybatisMaker.dto.Jpa2MybatisBuilder;
 import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.enums.Constants;
 import com.lxkplus.mybatisMaker.enums.TemplateObject;
+import com.lxkplus.mybatisMaker.service.FileCreateService.FileCreateService;
 import com.lxkplus.mybatisMaker.service.PathService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +22,19 @@ import java.util.List;
 
 @Service
 @Slf4j
-public class MapperService implements FileCreateService {
+public class MybatisMapperService implements FileCreateService {
     @Resource
     MybatisInterFaceConf mybatisInterFaceConf;
     @Resource
     PathService pathService;
+
+    @Resource
+    GenerateConf generateConf;
+
+    @Override
+    public boolean generate() {
+        return generateConf.isMybatis();
+    }
 
     @Override
     public void createFile(TableFlowContext table) throws IOException {
@@ -38,7 +49,23 @@ public class MapperService implements FileCreateService {
             builder.addMethod(insert.build());
         }
 
+        if (mybatisInterFaceConf.isInsertList() && table.getIdColumn() != null
+                && Constants.BaseTable.equals(table.getTableType())) {
+            MethodSpec.Builder insertList = MethodSpec.methodBuilder(Constants.insertList);
+            insertList.returns(int.class).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
+            insertList.addParameter(ParameterizedTypeName.get(List.class, TemplateObject.class), "lists");
+            builder.addMethod(insertList.build());
+        }
+
         if (mybatisInterFaceConf.isDeleteById()
+                && table.getIdColumn() != null
+                && Constants.BaseTable.equals(table.getTableType())) {
+            MethodSpec.Builder deleteByIdBuilder = MethodSpec.methodBuilder(Constants.deleteById);
+            deleteByIdBuilder.returns(int.class).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
+            addIDBuilder(table, builder, deleteByIdBuilder);
+        }
+
+        if (mybatisInterFaceConf.isDeleteByIds()
                 && table.getIdColumn() != null
                 && Constants.BaseTable.equals(table.getTableType())) {
             MethodSpec.Builder deleteByIdBuilder = MethodSpec.methodBuilder(Constants.deleteById);
@@ -72,27 +99,16 @@ public class MapperService implements FileCreateService {
             builder.addMethod(selectByIds.build());
         }
 
-        if (mybatisInterFaceConf.isInsertList() && table.getIdColumn() != null
-                && Constants.BaseTable.equals(table.getTableType())) {
-            MethodSpec.Builder insertList = MethodSpec.methodBuilder(Constants.insertList);
-            insertList.returns(int.class).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
-            insertList.addParameter(ParameterizedTypeName.get(List.class, TemplateObject.class), "lists");
-            builder.addMethod(insertList.build());
-        }
-
-        if (mybatisInterFaceConf.isDeleteByIds() && table.getIdColumn() != null
-                && Constants.BaseTable.equals(table.getTableType())) {
-            MethodSpec.Builder deleteByIds = MethodSpec.methodBuilder(Constants.deleteByIds);
-            deleteByIds.returns(int.class).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
-            deleteByIds.addParameter(ParameterizedTypeName.get(List.class, Integer.class), "ids");
-            builder.addMethod(deleteByIds.build());
-        }
-
         if (mybatisInterFaceConf.isSelectAll()) {
             MethodSpec.Builder selectAll = MethodSpec.methodBuilder(Constants.selectAll);
             selectAll.addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
             selectAll.returns(ParameterizedTypeName.get(List.class, TemplateObject.class));
             builder.addMethod(selectAll.build());
+        }
+
+        for (Jpa2MybatisBuilder jpa2MybatisBuilder : table.getJpa2MybatisBuilders()) {
+            MethodSpec.Builder mapper = jpa2MybatisBuilder.getMapper();
+            builder.addMethod(mapper.build());
         }
         JavaFile javaClassBuilder = JavaFile.builder(table.getMybatisMapperPackage().getPackageName(), builder.build()).build();
         String string = javaClassBuilder.toString()

@@ -44,27 +44,27 @@ public class LombokService {
 
     public MethodSpec setBuilder(ColumnWithJavaStatus columnWithJavaStatus) {
         String javaColumnName = columnWithJavaStatus.getJavaColumnName();
-        MethodSpec.Builder builder = MethodSpec.methodBuilder("set" + CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, javaColumnName));
-        builder.returns(void.class);
-        builder.addModifiers(Modifier.PUBLIC);
-        builder.addParameter(columnWithJavaStatus.getJavaType(), javaColumnName);
-        builder.addStatement("this.$N = that.$N", javaColumnName, javaColumnName);
+        MethodSpec.Builder builder = MethodSpec.methodBuilder("set" + CaseFormat.LOWER_CAMEL.to(CaseFormat.UPPER_CAMEL, javaColumnName))
+                .returns(void.class)
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(columnWithJavaStatus.getJavaType(), javaColumnName)
+                .addStatement("this.$N = that.$N", javaColumnName, javaColumnName);
         return builder.build();
     }
 
 
     public MethodSpec equalsBuilder(TableFlowContext tableFlowContext) {
-        MethodSpec.Builder builder = MethodSpec.methodBuilder("equals");
-        builder.addModifiers(Modifier.PUBLIC);
-        builder.addAnnotation(Override.class);
-        builder.addParameter(Object.class, "object");
-        builder.returns(boolean.class);
-        builder.addCode("""
+        MethodSpec.Builder builder = MethodSpec.methodBuilder("equals")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override.class)
+                .addParameter(Object.class, "object")
+                .returns(boolean.class)
+                .addCode("""
                 if (this == object) return true;
                 if (object == null || getClass() != object.getClass()) return false;
                 $T that = ($T) object
-                """, TemplateObject.class, TemplateObject.class);
-        builder.addCode("return ");
+                """, TemplateObject.class, TemplateObject.class)
+                .addCode("return ");
         for (int i = 0; i < tableFlowContext.getColumns().size(); i++) {
             ColumnWithJavaStatus column = tableFlowContext.getColumns().get(i);
             builder.addCode("$T.equals(this.$N, that.$N)", Objects.class, column.getJavaColumnName(), column.getJavaColumnName());
@@ -75,13 +75,17 @@ public class LombokService {
         return builder.build();
     }
     public MethodSpec hashCodeBuilder(TableFlowContext tableFlowContext) {
-        MethodSpec.Builder builder = MethodSpec.methodBuilder("hashCode");
-        builder.addModifiers(Modifier.PUBLIC);
-        builder.returns(int.class);
-        builder.addAnnotation(Override.class);
         StringJoiner sj = new StringJoiner(", ", "(", ")");
-        tableFlowContext.getColumns().stream().map(ColumnWithJavaStatus::getJavaColumnName).toList().forEach(sj::add);
-        builder.addStatement("return $T.hash" + sj, Objects.class);
+        tableFlowContext.getColumns()
+                .stream()
+                .map(ColumnWithJavaStatus::getJavaColumnName)
+                .toList()
+                .forEach(sj::add);
+        MethodSpec.Builder builder = MethodSpec.methodBuilder("hashCode")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(int.class)
+                .addAnnotation(Override.class)
+                .addStatement("return $T.hash" + sj, Objects.class);
         return builder.build();
     }
 }

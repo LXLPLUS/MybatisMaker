@@ -1,9 +1,15 @@
-package com.lxkplus.mybatisMaker.service.FileCreateService;
+package com.lxkplus.mybatisMaker.service.FileCreateService.mybatis;
 
+import com.lxkplus.mybatisMaker.conf.GenerateConf;
 import com.lxkplus.mybatisMaker.conf.MybatisInterFaceConf;
+import com.lxkplus.mybatisMaker.conf.MybatisMakerMybatisConf;
 import com.lxkplus.mybatisMaker.dto.ColumnWithJavaStatus;
+import com.lxkplus.mybatisMaker.dto.Jpa2MybatisBuilder;
 import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.enums.Constants;
+import com.lxkplus.mybatisMaker.service.FileCreateService.FileCreateService;
+import com.lxkplus.mybatisMaker.service.PathService;
+import com.lxkplus.mybatisMaker.utils.ColumnSafeUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -16,13 +22,11 @@ import org.jdom2.Element;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -37,8 +41,14 @@ public class MybatisXMLService implements FileCreateService {
 
     XMLOutputter xmlOutputter = new XMLOutputter(Format.getPrettyFormat());
 
-    @Value("${mybatis-maker.mybatis.jdbc_type}")
-    boolean showJdbcType;
+    @Resource
+    MybatisMakerMybatisConf mybatisMakerMybatisConf;
+
+    @Resource
+    GenerateConf generateConf;
+
+    @Resource
+    PathService pathService;
 
     Trie build;
 
@@ -46,7 +56,7 @@ public class MybatisXMLService implements FileCreateService {
     void init() {
         xmlOutputter.getFormat().setIndent("\t");
         Trie.TrieBuilder trieBuilder = Trie.builder();
-        trieBuilder.onlyWholeWords();
+        trieBuilder.ignoreOverlaps();
         trieBuilder.addKeyword("</select>");
         trieBuilder.addKeyword("</update>");
         trieBuilder.addKeyword("</insert>");
@@ -90,7 +100,12 @@ public class MybatisXMLService implements FileCreateService {
                         .replace("&gt;", ">");
             }
         }
-        Files.writeString(path, StringUtils.join(split, "\n"), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        if (!Files.isDirectory(path.getParent())) {
+            Files.createDirectories(path.getParent());
+        }
+
+        pathService.createFile(path, StringUtils.join(split, "\n"));
     }
 
     @NotNull
@@ -112,9 +127,14 @@ public class MybatisXMLService implements FileCreateService {
     }
 
     @Override
+    public boolean generate() {
+        return generateConf.isMybatis();
+    }
+
+    @Override
     public void createFile(TableFlowContext table) throws IOException {
-        if (!Files.exists(table.getMybatisXMLPath().getParent())) {
-            Files.createDirectories(table.getMybatisXMLPath().getParent());
+        if (!Files.exists(table.getMybatisXmlPath().getParent())) {
+            Files.createDirectories(table.getMybatisXmlPath().getParent());
         }
         Document mybatisDocument = this.createMybatisDocument(table.getMybatisMapperPackage().getPackageName() + "." + table.getMapperName());
         Element resultMap = getResultElement(table);
@@ -126,12 +146,25 @@ public class MybatisXMLService implements FileCreateService {
             select.addContent(insert(table));
             mybatisDocument.getRootElement().addContent(select);
         }
+        if (mybatisInterFaceConf.isInsertList() &&table.getIdColumn() != null && Constants.BaseTable.equals(table.getTableType())) {
+            Element insertList = new Element("insert");
+            insertList.setAttribute("id", Constants.insertList);
+            insertList.addContent(insertList(table));
+            mybatisDocument.getRootElement().addContent(insertList);
+        }
         if (mybatisInterFaceConf.isDeleteById() && table.getIdColumn() != null
                 && Constants.BaseTable.equals(table.getTableType())) {
             Element select = new Element("delete");
             select.setAttribute("id", Constants.deleteById);
             select.addContent(deleteByID(table));
             mybatisDocument.getRootElement().addContent(select);
+        }
+        if (mybatisInterFaceConf.isDeleteByIds() && table.getIdColumn() != null
+                && Constants.BaseTable.equals(table.getTableType())) {
+            Element deleteByIds = new Element("delete");
+            deleteByIds.setAttribute("id", Constants.deleteByIds);
+            deleteByIds.addContent(deleteByIds(table));
+            mybatisDocument.getRootElement().addContent(deleteByIds);
         }
         if (mybatisInterFaceConf.isUpdateById() && table.getIdColumn() != null
                 && Constants.BaseTable.equals(table.getTableType()) && table.getColumns().size() > 1) {
@@ -147,6 +180,15 @@ public class MybatisXMLService implements FileCreateService {
             selectById.addContent(selectById(table));
             mybatisDocument.getRootElement().addContent(selectById);
         }
+
+        if (mybatisInterFaceConf.isSelectAll()) {
+            Element selectAll = new Element("select");
+            selectAll.setAttribute("id", Constants.selectAll);
+            selectAll.setAttribute("resultMap", table.getMybatisResultMapId());
+            selectAll.addContent(selectAll(table));
+            mybatisDocument.getRootElement().addContent(selectAll);
+
+        }
         if (mybatisInterFaceConf.isSelectByIds() && table.getIdColumn() != null) {
             Element selectByIds = new Element("select");
             selectByIds.setAttribute("id", Constants.selectByIds);
@@ -154,24 +196,16 @@ public class MybatisXMLService implements FileCreateService {
             selectByIds.addContent(selectByIds(table));
             mybatisDocument.getRootElement().addContent(selectByIds);
         }
-        if (mybatisInterFaceConf.isDeleteByIds() && table.getIdColumn() != null
-                && Constants.BaseTable.equals(table.getTableType())) {
-            Element deleteByIds = new Element("delete");
-            deleteByIds.setAttribute("id", Constants.deleteByIds);
-            deleteByIds.addContent(deleteByIds(table));
-            mybatisDocument.getRootElement().addContent(deleteByIds);
+
+        for (Jpa2MybatisBuilder jpa2MybatisBuilder : table.getJpa2MybatisBuilders()) {
+            Element xml = jpa2MybatisBuilder.getXml();
+            mybatisDocument.getRootElement().addContent(xml);
         }
-        if (mybatisInterFaceConf.isInsertList() &&table.getIdColumn() != null && Constants.BaseTable.equals(table.getTableType())) {
-            Element insertList = new Element("insert");
-            insertList.setAttribute("id", Constants.insertList);
-            insertList.addContent(insertList(table));
-            mybatisDocument.getRootElement().addContent(insertList);
-        }
-        createXML(mybatisDocument, table.getMybatisXMLPath());
+        createXML(mybatisDocument, table.getMybatisXmlPath());
     }
 
     @NotNull
-    private Element getResultElement(TableFlowContext table) {
+    public Element getResultElement(TableFlowContext table) {
         Element resultMap = new Element("resultMap");
         resultMap.setAttribute("id", table.getMybatisResultMapId());
         resultMap.setAttribute("type", table.getFullyQualifiedName());
@@ -184,7 +218,7 @@ public class MybatisXMLService implements FileCreateService {
             Element idResult = new Element("id");
             idResult.setAttribute("property", idColumn.getJavaColumnName());
             idResult.setAttribute("column", idColumn.getColumnName());
-            if (showJdbcType) {
+            if (mybatisMakerMybatisConf.isJdbcType()) {
                 idResult.setAttribute("jdbcType", idColumn.getJdbcType().getName());
             }
             resultMap.addContent(idResult);
@@ -196,7 +230,7 @@ public class MybatisXMLService implements FileCreateService {
             Element result = new Element("result");
             result.setAttribute("property", column.getJavaColumnName());
             result.setAttribute("column", column.getColumnName());
-            if (showJdbcType) {
+            if (mybatisMakerMybatisConf.isJdbcType()) {
                 result.setAttribute("jdbcType", column.getJdbcType().getName());
             }
             resultMap.addContent(result);
@@ -208,7 +242,7 @@ public class MybatisXMLService implements FileCreateService {
         List<String> collect = tableFlowContext.getColumns().stream()
                 .filter(x -> !tableFlowContext.getDateTimeAutoColumns().contains(x))
                 .map(ColumnWithJavaStatus::getColumnName)
-                .map(x -> "`" + x + "`")
+                .map(ColumnSafeUtils::safeColumn)
                 .toList();
         List<String> values = tableFlowContext.getColumns()
                 .stream()
@@ -220,16 +254,16 @@ public class MybatisXMLService implements FileCreateService {
                 \t(%s)
                 \t\tvalues (%s);
                 """,
-                tableFlowContext.getDatabaseWithTableName(),
+                tableFlowContext.getSafeTableName(),
                 StringUtils.join(collect, ", "),
                 StringUtils.join(values, ", ")
         );
     }
 
     private static String deleteByID(TableFlowContext tableFlowContext) {
-        return String.format("delete from %s \n\twhere `%s` = #{%s};",
-                tableFlowContext.getDatabaseWithTableName(),
-                tableFlowContext.getIdColumn().getColumnName(),
+        return String.format("delete from %s \n\twhere %s = #{%s} ",
+                tableFlowContext.getSafeTableName(),
+                ColumnSafeUtils.safeColumn(tableFlowContext.getIdColumn().getColumnName()),
                 tableFlowContext.getIdColumn().getJavaColumnName());
     }
 
@@ -239,58 +273,69 @@ public class MybatisXMLService implements FileCreateService {
         columnWithJavaStatuses.removeIf(x -> x == tableFlowContext.getIdColumn());
         List<String> list = columnWithJavaStatuses.stream()
                 .filter(x -> !tableFlowContext.getDateTimeAutoColumns().contains(x))
-                .map(x -> String.format("`%s` = #{%s}", x.getColumnName(), x.getJavaColumnName()))
+                .map(x -> String.format("%s = #{%s}", ColumnSafeUtils.safeColumn(x.getColumnName()), x.getJavaColumnName()))
                 .toList();
         String join = StringUtils.join(list, ", ");
-        return String.format("update %s set %s \n\twhere `%s` = #{%s};",
-                tableFlowContext.getDatabaseWithTableName(),
+        return String.format("update %s set %s \n\twhere %s = #{%s} ",
+                tableFlowContext.getSafeTableName(),
                 join,
-                tableFlowContext.getIdColumn().getColumnName(),
+                ColumnSafeUtils.safeColumn(tableFlowContext.getIdColumn().getColumnName()),
                 tableFlowContext.getIdColumn().getJavaColumnName());
     }
 
     public static String selectById(TableFlowContext tableFlowContext) {
         List<String> list = tableFlowContext.getColumns().stream()
-                .map(x -> "`" + x.getColumnName() + "`")
+                .map(x -> ColumnSafeUtils.safeColumn(x.getColumnName()))
                 .toList();
 
-        return String.format("select %s from %s \n\t\twhere `%s` = #{%s}",
+        return String.format("select %s from %s \n\t\twhere %s = #{%s} ",
                 StringUtils.join(list, ", "),
-                tableFlowContext.getDatabaseWithTableName(),
-                tableFlowContext.getIdColumn().getColumnName(),
+                tableFlowContext.getSafeTableName(),
+                ColumnSafeUtils.safeColumn(tableFlowContext.getIdColumn().getColumnName()),
                 tableFlowContext.getIdColumn().getJavaColumnName());
     }
 
+
+    public static String selectAll(TableFlowContext tableFlowContext) {
+        List<String> list = tableFlowContext.getColumns().stream()
+                .map(x -> ColumnSafeUtils.safeColumn(x.getColumnName()))
+                .toList();
+
+        return String.format("select %s from %s ",
+                StringUtils.join(list, ", "),
+                tableFlowContext.getSafeTableName());
+
+    }
     public static String selectByIds(TableFlowContext tableFlowContext) {
         List<String> list = tableFlowContext.getColumns().stream().map(x -> "`" + x.getColumnName() + "`").toList();
         return String.format("""
                     select %s from %s
-                        where `%s` in
+                        where %s in
                         <foreach collection="list" item = "item" open="(" separator = "," close=")">
                         #{item}
                         </foreach>
                 """, StringUtils.join(list, ", "),
-                tableFlowContext.getDatabaseWithTableName(),
-                tableFlowContext.getIdColumn().getColumnName());
+                tableFlowContext.getSafeTableName(),
+                ColumnSafeUtils.safeColumn(tableFlowContext.getIdColumn().getColumnName()));
     }
 
     private static String deleteByIds(TableFlowContext tableFlowContext) {
         return String.format("""
                         delete from %s
-                            where `%s` in
+                            where %s in
                             <foreach collection="list" item = "item" open="(" separator = "," close=")">
                             #{item}
                             </foreach>
                         """,
-                tableFlowContext.getDatabaseWithTableName(),
-                tableFlowContext.getIdColumn().getColumnName());
+                tableFlowContext.getSafeTableName(),
+                ColumnSafeUtils.safeColumn(tableFlowContext.getIdColumn().getColumnName()));
     }
 
     private static String insertList(TableFlowContext tableFlowContext) {
         List<String> collect = tableFlowContext.getColumns().stream()
                 .filter(x -> !tableFlowContext.getDateTimeAutoColumns().contains(x))
                 .map(ColumnWithJavaStatus::getColumnName)
-                .map(x -> "`" + x + "`")
+                .map(ColumnSafeUtils::safeColumn)
                 .toList();
         List<String> values = tableFlowContext.getColumns().stream()
                 .filter(x -> !tableFlowContext.getDateTimeAutoColumns().contains(x))
@@ -305,7 +350,7 @@ public class MybatisXMLService implements FileCreateService {
                     (%s)
                     </foreach>
                 """,
-                tableFlowContext.getDatabaseWithTableName(),
+                tableFlowContext.getSafeTableName(),
                 StringUtils.join(collect, ", "),
                 StringUtils.join(values, ", ")
         );
