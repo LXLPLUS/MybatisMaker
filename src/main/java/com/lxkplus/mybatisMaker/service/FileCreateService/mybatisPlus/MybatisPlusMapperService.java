@@ -7,6 +7,7 @@ import com.lxkplus.mybatisMaker.enums.TemplateObject;
 import com.lxkplus.mybatisMaker.service.FileCreateService.FileCreateService;
 import com.lxkplus.mybatisMaker.service.PathService;
 import jakarta.annotation.Resource;
+import jakarta.validation.constraints.NotNull;
 import org.apache.ibatis.annotations.Mapper;
 import org.springframework.javapoet.JavaFile;
 import org.springframework.javapoet.ParameterizedTypeName;
@@ -30,7 +31,7 @@ public class MybatisPlusMapperService implements FileCreateService {
     }
 
     @Override
-    public void createFile(TableFlowContext table) throws IOException {
+    public void createFile(@NotNull TableFlowContext table) throws IOException {
         TypeSpec.Builder builder = TypeSpec.interfaceBuilder(table.getMapperName())
                 .addModifiers(Modifier.PUBLIC).addAnnotation(Mapper.class);
 

@@ -59,34 +59,36 @@ public class JpaService {
             map.put(key, column);
             trieBuilder.addKeyword(key);
         }
+        trieBuilder.addKeyword("And");
+        trieBuilder.addKeyword("Or");
 
         Trie build = trieBuilder.build();
         Collection<Token> tokenize = build.tokenize(query);
         StringBuilder whereBody = new StringBuilder();
 
         selectBody.getTrims().addAll(tokenize);
+        selectBody.setSuccess(true);
         for (Token token : tokenize) {
-            if (token.isMatch()) {
+            if (token.isMatch() && token.getFragment().equals("And")) {
+                whereBody.append(" and ");
+            } else if (token.isMatch() && token.getFragment().equals("Or")) {
+                whereBody.append(" or ");
+            } else if (token.isMatch()) {
                 ColumnWithJavaStatus column = map.get(token.getFragment());
                 String javaBeanName = column.getJavaColumnName();
                 String columnName = column.getColumnName();
                 whereBody.append(String.format("%s = #{%s}", ColumnSafeUtils.safeColumn(columnName), javaBeanName));
                 selectBody.getColumnWithJavaStatusList().add(column);
-            } else if (!token.isMatch() && token.getFragment().equals("And")) {
-                whereBody.append(" and ");
-            } else if (!token.isMatch() && token.getFragment().equals("Or")) {
-                whereBody.append(" or ");
             } else {
-                log.warn("{} {} 解析失败， 失败{} 在 {}", tableFlowContext.getJavaBeanName(),
+                log.warn("{} {} 解析失败， 字段 {}", tableFlowContext.getJavaBeanName(),
                         query,
-                        token.getFragment(),
-                        tokenize.stream().map(Token::getFragment).toList());
+                        tokenize.stream().map(x -> x.isMatch() ? x.getFragment() + "(符合)": x.getFragment() + "(不符)")
+                                .toList());
                 selectBody.setSuccess(false);
                 return selectBody;
             }
             selectBody.setWhereBy(whereBody.toString());
         }
-        selectBody.setSuccess(true);
         return selectBody;
     }
     private static void countBy(TableFlowContext tableFlowContext, String query) {

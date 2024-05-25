@@ -3,7 +3,6 @@ package com.lxkplus.mybatisMaker.service;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.lxkplus.mybatisMaker.entity.Column;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -15,15 +14,13 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 @Slf4j
 public class CacheService {
-    ConcurrentMap<Long, List<Column>> map = new ConcurrentHashMap<>();
+    ConcurrentMap<Long, List<Column>> map;
 
-    @PostConstruct
-    public void init() {
+    public CacheService() {
         Cache<Long, List<Column>> cache = Caffeine.newBuilder()
                 .maximumSize(3)
                 .build();
         map = cache.asMap();
-
     }
 
     public List<Column> get() {

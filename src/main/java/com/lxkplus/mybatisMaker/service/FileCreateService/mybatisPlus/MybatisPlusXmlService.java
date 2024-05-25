@@ -5,6 +5,7 @@ import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.service.FileCreateService.FileCreateService;
 import com.lxkplus.mybatisMaker.service.FileCreateService.mybatis.MybatisXMLService;
 import jakarta.annotation.Resource;
+import jakarta.validation.constraints.NotNull;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,7 @@ public class MybatisPlusXmlService implements FileCreateService {
     }
 
     @Override
-    public void createFile(TableFlowContext table) throws IOException {
+    public void createFile(@NotNull TableFlowContext table) throws IOException {
         if (!Files.exists(table.getMybatisXmlPath().getParent())) {
             Files.createDirectories(table.getMybatisXmlPath().getParent());
         }

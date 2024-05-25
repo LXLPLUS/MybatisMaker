@@ -28,7 +28,7 @@ public class CountService {
         return System.currentTimeMillis() - changedStamp;
     }
 
-    public boolean timeFromLastCheck(long timeMillis) {
+    public boolean timeLongerThanLastCheck(long timeMillis) {
         long stamp = System.currentTimeMillis();
         return stamp - lastCheckStamp >= timeMillis;
     }

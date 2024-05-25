@@ -45,7 +45,11 @@ public class TableCompareService {
         if (str == null || ruler == null) {
             return false;
         }
-        return str.equals(ruler);
+        String regex = str.replaceAll(Constants.JAVA_NOT_SUPPORT_CHAR, "");
+        if (!regex.equals(str)) {
+            return false;
+        }
+        return ruler.matches(regex.replace("*", ".*"));
     }
     @PostConstruct
     void init() {
@@ -142,8 +146,8 @@ public class TableCompareService {
                     .filter(p1.and(p2))
                     .toList();
         if (!list.isEmpty()) {
-            ColumnWithJavaStatus explain = this.explain(column);
-            list.get(0).getColumns().add(explain);
+                ColumnWithJavaStatus explain = this.convert(column);
+                list.get(0).getColumns().add(explain);
             }
         }
 
@@ -182,7 +186,7 @@ public class TableCompareService {
             }
         }
 
-        // 不符合条件的删除
+        // 删除不符合条件的
         LinkedHashSet<Column> suitTables = new LinkedHashSet<>(objects);
         for (Column column : columns) {
             for (SuitRuler suitRuler : tableNotAllowList) {
@@ -196,7 +200,7 @@ public class TableCompareService {
         return new ArrayList<>(suitTables);
     }
 
-    public ColumnWithJavaStatus explain(Column column) {
+    public ColumnWithJavaStatus convert(Column column) {
         ColumnWithJavaStatus convert = ColumnWithJavaStatus.convert(column);
 
         // 格式化mysql名 -> java 列名

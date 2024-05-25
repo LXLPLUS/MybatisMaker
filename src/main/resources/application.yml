@@ -22,7 +22,6 @@ mybatis-maker:
         # 不侦听的数据库
         except_table:
             - "sakila.*"
-            - "world.*"
 
     # 是否生成对应的内容
     generate:

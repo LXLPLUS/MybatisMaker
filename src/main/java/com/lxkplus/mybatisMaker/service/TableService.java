@@ -116,9 +116,6 @@ public class TableService {
         tableName = tableName
                 .replace(" ", "_")
                 .replaceAll(Constants.JAVA_NOT_SUPPORT_CHAR, "");
-        if (StringUtils.isBlank(tableName)) {
-            return "Random" + r.nextInt();
-        }
         if (tableName.charAt(0) >= '0' && tableName.charAt(0) <= '9') {
             return "Number" + tableName;
         }
@@ -134,6 +131,9 @@ public class TableService {
             tableNameTrim = StringUtils.removeEnd(tableNameTrim, tail);
             break;
         }
+        if (StringUtils.isBlank(tableName)) {
+            return "Random" + r.nextInt();
+        }
         if (active) {
             return CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, tableNameTrim);
         }
@@ -146,10 +146,7 @@ public class TableService {
         if (tableFlowContext.getTableSchema().equals(activeDatabase)) {
             tableFlowContext.setActiveDatabase(true);
         }
-
-        String s = ColumnSafeUtils.safeTableName(tableFlowContext);
-        tableFlowContext.setSafeTableName(s);
-
+        tableFlowContext.setSafeTableName(ColumnSafeUtils.safeTableName(tableFlowContext));
 
         // 进行名称转化
         String tableName = tableFlowContext.getTableName();
@@ -215,6 +212,7 @@ public class TableService {
         Map<String, String> typeMapper = mybatisMakerConf.getTypeMapper();
 
         for (ColumnWithJavaStatus column : tableFlowContext.getColumns()) {
+            column.setSafeColumnName(ColumnSafeUtils.safeColumn(column.getColumnName()));
             if (simpleNameMap.containsKey(typeMapper.get(column.getJdbcType().getName()))) {
                 Type type = simpleNameMap.get(typeMapper.get(column.getJdbcType().getName()));
                 column.setJavaType(type);

@@ -89,7 +89,7 @@ public class CrontabJobs {
             cacheService.put(newColumns);
             countService.change();
             persistenceService.save(newColumns);
-        } else if (countService.timeFromLastCheck(Constants.TIME_INFO)) {
+        } else if (countService.timeLongerThanLastCheck(Constants.TIME_INFO)) {
             log.info("数据库表格{}秒没发生变更", countService.timeFromLastChange() / 1000);
             countService.check();
             return;

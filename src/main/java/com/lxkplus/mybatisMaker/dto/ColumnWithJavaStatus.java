@@ -35,6 +35,7 @@ public class ColumnWithJavaStatus {
     JDBCType jdbcType;
     boolean convertMysql2JavaStatus;
     Type javaType;
+    String safeColumnName;
     /**
      * 是否是时间字段
      */
