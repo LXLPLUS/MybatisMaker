@@ -1,10 +1,10 @@
-package com.lxkplus.mybatisMaker.service;
+package com.lxkplus.mybatisMaker.manager;
 
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
 @Service
-public class CountService {
+public class CountManager {
     private int count;
 
     private long changedStamp = System.currentTimeMillis();

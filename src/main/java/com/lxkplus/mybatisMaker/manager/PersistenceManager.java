@@ -1,4 +1,4 @@
-package com.lxkplus.mybatisMaker.service;
+package com.lxkplus.mybatisMaker.manager;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class PersistenceService {
+public class PersistenceManager {
     @Resource
     MybatisMakerConf mybatisMakerConf;
 

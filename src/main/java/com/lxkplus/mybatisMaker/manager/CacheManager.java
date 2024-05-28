@@ -1,4 +1,4 @@
-package com.lxkplus.mybatisMaker.service;
+package com.lxkplus.mybatisMaker.manager;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -8,15 +8,14 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 @Service
 @Slf4j
-public class CacheService {
+public class CacheManager {
     ConcurrentMap<Long, List<Column>> map;
 
-    public CacheService() {
+    public CacheManager() {
         Cache<Long, List<Column>> cache = Caffeine.newBuilder()
                 .maximumSize(3)
                 .build();

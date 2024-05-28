@@ -70,4 +70,41 @@ public class ColumnWithJavaStatus {
         target.setSrsId(column.getSrsId());
         return target;
     }
+
+
+    @Override
+    public ColumnWithJavaStatus clone() {
+        ColumnWithJavaStatus columnWithJavaStatus = new ColumnWithJavaStatus();
+        columnWithJavaStatus.setTableCatalog(this.getTableCatalog());
+        columnWithJavaStatus.setTableSchema(this.getTableSchema());
+        columnWithJavaStatus.setTableName(this.getTableName());
+        columnWithJavaStatus.setColumnName(this.getColumnName());
+        columnWithJavaStatus.setOrdinalPosition(this.getOrdinalPosition());
+        columnWithJavaStatus.setColumnDefault(this.getColumnDefault());
+        columnWithJavaStatus.setIsNullable(this.getIsNullable());
+        columnWithJavaStatus.setDataType(this.getDataType());
+        columnWithJavaStatus.setCharacterMaximumLength(this.getCharacterMaximumLength());
+        columnWithJavaStatus.setCharacterOctetLength(this.getCharacterOctetLength());
+        columnWithJavaStatus.setNumericPrecision(this.getNumericPrecision());
+        columnWithJavaStatus.setNumericScale(this.getNumericScale());
+        columnWithJavaStatus.setDatetimePrecision(this.getDatetimePrecision());
+        columnWithJavaStatus.setCharacterSetName(this.getCharacterSetName());
+        columnWithJavaStatus.setCollationName(this.getCollationName());
+        columnWithJavaStatus.setColumnType(this.getColumnType());
+        columnWithJavaStatus.setColumnKey(this.getColumnKey());
+        columnWithJavaStatus.setExtra(this.getExtra());
+        columnWithJavaStatus.setPrivileges(this.getPrivileges());
+        columnWithJavaStatus.setColumnComment(this.getColumnComment());
+        columnWithJavaStatus.setGenerationExpression(this.getGenerationExpression());
+        columnWithJavaStatus.setSrsId(this.getSrsId());
+        columnWithJavaStatus.setJavaColumnName(this.getJavaColumnName());
+        columnWithJavaStatus.setIdType(this.getIdType());
+        columnWithJavaStatus.setJdbcType(this.getJdbcType());
+        columnWithJavaStatus.setConvertMysql2JavaStatus(this.isConvertMysql2JavaStatus());
+        columnWithJavaStatus.setJavaType(this.getJavaType());
+        columnWithJavaStatus.setSafeColumnName(this.getSafeColumnName());
+        columnWithJavaStatus.setCheckDateTime(this.isCheckDateTime());
+        columnWithJavaStatus.setPri(this.isPri());
+        return columnWithJavaStatus;
+    }
 }

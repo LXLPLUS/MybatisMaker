@@ -4,6 +4,9 @@ import com.lxkplus.mybatisMaker.Mapper.DatabaseMapper;
 import com.lxkplus.mybatisMaker.dto.TableFlowContext;
 import com.lxkplus.mybatisMaker.entity.Column;
 import com.lxkplus.mybatisMaker.enums.Constants;
+import com.lxkplus.mybatisMaker.manager.CacheManager;
+import com.lxkplus.mybatisMaker.manager.CountManager;
+import com.lxkplus.mybatisMaker.manager.PersistenceManager;
 import com.lxkplus.mybatisMaker.service.*;
 import com.lxkplus.mybatisMaker.service.FileCreateService.DDLService;
 import com.lxkplus.mybatisMaker.service.FileCreateService.FileCreateService;
@@ -20,6 +23,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,90 +34,68 @@ public class CrontabJobs {
     @Resource
     DatabaseMapper databaseMapper;
     @Resource
-    CacheService cacheService;
+    CacheManager cacheManager;
     @Resource
     TableCompareService tableCompareService;
-    @Resource
-    MybatisEntityService mybatisEntityService;
-    @Resource
-    DDLService ddlService;
-    @Resource
-    TableService tableService;
-    @Resource
-    MybatisPlusEntityService mybatisPlusEntityService;
-    @Resource
-    MybatisMapperService mybatisMapperService;
-    @Resource
-    MybatisXMLService mybatisXMLService;
 
     @Resource
-    MybatisPlusMapperService mybatisPlusMapperService;
+    CountManager countManager;
 
     @Resource
-    MybatisPlusXmlService mybatisPlusXmlService;
-
-    @Resource
-    CountService countService;
-
-    @Resource
-    PersistenceService persistenceService;
+    PersistenceManager persistenceManager;
 
     List<FileCreateService> taskList = new ArrayList<>();
+
+    @Resource
+    AllTaskCollectService allTaskCollectService;
+
     @PostConstruct
     void init() throws IOException {
-        taskList.add(mybatisEntityService);
-        taskList.add(mybatisMapperService);
-        taskList.add(mybatisXMLService);
-        taskList.add(ddlService);
-        taskList.add(mybatisPlusEntityService);
-        taskList.add(mybatisPlusMapperService);
-        taskList.add(mybatisPlusXmlService);
+        taskList = allTaskCollectService.getFileCreateServiceList();
 
-        List<Column> load = persistenceService.load();
+        List<Column> load = persistenceManager.load();
         if (!load.isEmpty()) {
             log.info("成功加载缓存，共{}行", load.size());
-            cacheService.put(load);
+            cacheManager.put(load);
         }
 
     }
 
     @Scheduled(initialDelay = 5000L, fixedDelay = 2000L)
-    public void flash() throws IOException {
-        countService.addCount();
+    public void flash() throws IOException, SQLException, ClassNotFoundException {
+        countManager.addCount();
         // 和缓存比较
         List<Column> newColumns = databaseMapper.getColumns();
         // 只保留符合规则的数据
         newColumns = tableCompareService.getSuitColumn(newColumns);
-        List<Column> oldColumns = cacheService.get();
+        List<Column> oldColumns = cacheManager.get();
         if (!newColumns.equals(oldColumns)) {
-            cacheService.put(newColumns);
-            countService.change();
-            persistenceService.save(newColumns);
-        } else if (countService.timeLongerThanLastCheck(Constants.TIME_INFO)) {
-            log.info("数据库表格{}秒没发生变更", countService.timeFromLastChange() / 1000);
-            countService.check();
+            cacheManager.put(newColumns);
+            countManager.change();
+            persistenceManager.save(newColumns);
+        } else if (countManager.timeLongerThanLastCheck(Constants.TIME_INFO)) {
+            log.info("数据库表格{}秒没发生变更", countManager.timeFromLastChange() / 1000);
+            countManager.check();
             return;
         } else {
             return;
         }
 
-        // 对数据进行处理，防止异常
-        try {
-            // 打印删除和删除的信息
-            tableCompareService.infoCreateAndDelete(oldColumns, newColumns);
-            // 获取有变更的表格，并填入列信息
-            List<TableFlowContext> tables = tableCompareService.getCreateOrDiffTable(oldColumns, newColumns);
+        // 打印删除和删除的信息
+        tableCompareService.infoCreateAndDelete(oldColumns, newColumns);
+        // 获取有变更的表格，并填入列信息
+        List<TableFlowContext> tables = tableCompareService.getCreateOrDiffTable(oldColumns, newColumns);
 
-            for (TableFlowContext table : tables) {
-                tableService.fillMessage(table);
-                for (FileCreateService fileCreateService : taskList) {
-                    if (fileCreateService.generate()) {
+        for (TableFlowContext table : tables) {
+            for (FileCreateService fileCreateService : taskList) {
+                if (fileCreateService.needGenerate()) {
+                    try {
                         fileCreateService.createFile(table);
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 }

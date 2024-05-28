@@ -89,6 +89,5 @@ public class TableFlowContext {
         tableFlowContext.setTableSchema(column.getTableSchema());
         tableFlowContext.setTableName(column.getTableName());
         return tableFlowContext;
-
     }
 }

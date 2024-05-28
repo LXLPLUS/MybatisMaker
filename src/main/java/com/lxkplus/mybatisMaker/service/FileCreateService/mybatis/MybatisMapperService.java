@@ -32,7 +32,7 @@ public class MybatisMapperService implements FileCreateService {
     GenerateConf generateConf;
 
     @Override
-    public boolean generate() {
+    public boolean needGenerate() {
         return generateConf.isMybatis();
     }
 
@@ -107,8 +107,10 @@ public class MybatisMapperService implements FileCreateService {
         }
 
         for (Jpa2MybatisBuilder jpa2MybatisBuilder : table.getJpa2MybatisBuilders()) {
-            MethodSpec.Builder mapper = jpa2MybatisBuilder.getMapper();
-            builder.addMethod(mapper.build());
+            if (jpa2MybatisBuilder.isMybatis()) {
+                MethodSpec.Builder mapper = jpa2MybatisBuilder.getMapper();
+                builder.addMethod(mapper.build());
+            }
         }
         JavaFile javaClassBuilder = JavaFile.builder(table.getMybatisMapperPackage().getPackageName(), builder.build()).build();
         String string = javaClassBuilder.toString()

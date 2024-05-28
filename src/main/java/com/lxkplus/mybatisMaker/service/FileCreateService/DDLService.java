@@ -34,7 +34,7 @@ public class DDLService implements FileCreateService {
     }
 
     @Override
-    public boolean generate() {
+    public boolean needGenerate() {
         return true;
     }
 

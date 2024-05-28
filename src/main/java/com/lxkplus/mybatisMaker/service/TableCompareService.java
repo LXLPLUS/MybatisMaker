@@ -20,6 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import java.sql.JDBCType;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -35,8 +36,10 @@ public class TableCompareService {
     List<SuitRuler> tableNotAllowList = new ArrayList<>();
 
     @Resource
-    MybatisMakerMybatisConf mybatisMakerMybatisConf;
+    TableHandleService tableHandleService;
 
+    @Resource
+    MybatisMakerMybatisConf mybatisMakerMybatisConf;
 
     private boolean starEquals(String str, String ruler) {
         if ("*".equals(ruler)) {
@@ -73,6 +76,11 @@ public class TableCompareService {
         tableNotAllowList.add(suitRuler);
     }
 
+    /**
+     * 打印变更信息
+     * @param old 旧的变更信息
+     * @param newColumn 新的变更信息
+     */
     public void infoCreateAndDelete(List<Column> old, List<Column> newColumn) {
 
         Collection<Column> create = CollectionUtils.subtract(newColumn, old);
@@ -119,7 +127,13 @@ public class TableCompareService {
         }
     }
 
-    public List<TableFlowContext> getCreateOrDiffTable(List<Column> old, List<Column> newColumn) {
+    /**
+     * 填充为表
+     * @param old 旧的列信息
+     * @param newColumn 新的列
+     * @return 需要变更的表的信息
+     */
+    public List<TableFlowContext> getCreateOrDiffTable(List<Column> old, List<Column> newColumn) throws SQLException, ClassNotFoundException {
 
         // 获取新表和旧表的所有diff列
         Collection<Column> disjunction = CollectionUtils.disjunction(old, newColumn);
@@ -151,6 +165,10 @@ public class TableCompareService {
             }
         }
 
+        for (TableFlowContext diffTable : diffTables) {
+            tableHandleService.fillMessage(diffTable);
+            this.tagNotWatchTime(diffTable);
+        }
         return new ArrayList<>(diffTables);
     }
 

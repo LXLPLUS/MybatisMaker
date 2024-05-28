@@ -36,42 +36,37 @@ import java.util.*;
 
 @Service
 @Slf4j
-public class TableService {
+public class TableHandleService {
 
     @Resource
-    JpaLoadService jpaLoadService;
+    private JpaLoadService jpaLoadService;
 
     @Resource
-    JpaFilter jpaFilter;
+    private JpaFilter jpaFilter;
 
     @Resource
-    JpaService jpaService;
+    private JpaService jpaService;
     @Resource
-    MybatisMakerConf mybatisMakerConf;
+    private MybatisMakerConf mybatisMakerConf;
     @Resource
-    JdbcTypeService jdbcTypeService;
+    private JdbcTypeService jdbcTypeService;
 
     @Resource
-    MybatisMakerMybatisConf mybatisMakerMybatisConf;
+    private MybatisMakerMybatisConf mybatisMakerMybatisConf;
     @Resource
-    DDLService ddlService;
+    private DDLService ddlService;
     @Value("${mybatis-maker.package.ddl-package}")
-    String DDLPackage;
-    @Value("${mybatis-maker.mybatis.jdbc_type}")
-    boolean showJdbcType;
+    private String DDLPackage;
     @Value("${mybatis-maker.connect.active_database:null}")
-    String activeDatabase;
+    private String activeDatabase;
 
     @Resource
-    MybatisPlusConf mybatisPlusConf;
+    private MybatisPlusConf mybatisPlusConf;
 
-    @Resource
-    TableCompareService tableCompareService;
-
-    HashMap<String, Type> simpleNameMap = new HashMap<>();
+     HashMap<String, Type> simpleNameMap = new HashMap<>();
 
     @PostConstruct
-    void init() {
+    private void init() {
         simpleNameMap.put(String.class.getSimpleName(), String.class);
         simpleNameMap.put(int.class.getSimpleName(), int.class);
         simpleNameMap.put(long.class.getSimpleName(), long.class);
@@ -109,7 +104,7 @@ public class TableService {
 
 
     @Resource
-    PathService pathService;
+    private PathService pathService;
     private final Random r = new Random();
 
     private String convertTableNameToJavaBeanName(String schemaName, String tableName, boolean active) {
@@ -212,7 +207,10 @@ public class TableService {
         Map<String, String> typeMapper = mybatisMakerConf.getTypeMapper();
 
         for (ColumnWithJavaStatus column : tableFlowContext.getColumns()) {
+            // 转化为安全的sql
             column.setSafeColumnName(ColumnSafeUtils.safeColumn(column.getColumnName()));
+
+            // 类型映射
             if (simpleNameMap.containsKey(typeMapper.get(column.getJdbcType().getName()))) {
                 Type type = simpleNameMap.get(typeMapper.get(column.getJdbcType().getName()));
                 column.setJavaType(type);
@@ -236,11 +234,9 @@ public class TableService {
             }
         }
 
-        tableCompareService.tagNotWatchTime(tableFlowContext);
-
         for (JpaRow jpaRow : jpaLoadService.getJpaRowList()) {
             if (jpaFilter.rulerEquals(jpaRow.getTable(), tableFlowContext)) {
-                jpaService.convertToMybatis(tableFlowContext, jpaRow.getFuncName());
+                jpaService.convertToMybatis(tableFlowContext, jpaRow);
             }
         }
     }

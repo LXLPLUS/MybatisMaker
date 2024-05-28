@@ -41,7 +41,7 @@ public class MybatisEntityService implements FileCreateService {
     GenerateConf generateConf;
 
     @Override
-    public boolean generate() {
+    public boolean needGenerate() {
         return generateConf.isMybatis();
     }
 

@@ -127,7 +127,7 @@ public class MybatisXMLService implements FileCreateService {
     }
 
     @Override
-    public boolean generate() {
+    public boolean needGenerate() {
         return generateConf.isMybatis();
     }
 
@@ -187,7 +187,6 @@ public class MybatisXMLService implements FileCreateService {
             selectAll.setAttribute("resultMap", table.getMybatisResultMapId());
             selectAll.addContent(selectAll(table));
             mybatisDocument.getRootElement().addContent(selectAll);
-
         }
         if (mybatisInterFaceConf.isSelectByIds() && table.getIdColumn() != null) {
             Element selectByIds = new Element("select");
@@ -198,8 +197,10 @@ public class MybatisXMLService implements FileCreateService {
         }
 
         for (Jpa2MybatisBuilder jpa2MybatisBuilder : table.getJpa2MybatisBuilders()) {
-            Element xml = jpa2MybatisBuilder.getXml();
-            mybatisDocument.getRootElement().addContent(xml);
+            if (jpa2MybatisBuilder.isMybatis()) {
+                Element xml = jpa2MybatisBuilder.getXml();
+                mybatisDocument.getRootElement().addContent(xml);
+            }
         }
         createXML(mybatisDocument, table.getMybatisXmlPath());
     }

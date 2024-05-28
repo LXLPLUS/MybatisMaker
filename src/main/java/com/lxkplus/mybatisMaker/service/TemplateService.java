@@ -14,7 +14,7 @@ import java.util.Map;
 @Slf4j
 public class TemplateService {
 
-    @Resource
+    @Resource(name = "jsonObjectMapper")
     ObjectMapper objectMapper;
 
     public String replace(String str, Object bean) {

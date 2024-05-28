@@ -1,4 +1,4 @@
-package com.lxkplus.mybatisMaker.service;
+package com.lxkplus.mybatisMaker.init;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;

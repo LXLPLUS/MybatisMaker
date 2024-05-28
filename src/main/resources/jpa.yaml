@@ -1,5 +1,23 @@
 - table: "*.*"
-  funcName: findAll
+  funcName: selectAll
+  mybatis: true
+  mybatisPlus: false
 
 - table: "*.*"
-  funcName: countByColumn1AndColumn2AndId
+  funcName: countByColumn1AndColumn2
+
+- table: "*.*"
+  funcName: countById
+
+- table: "*.*"
+  funcName: findById
+  alias: findByID2
+
+- table: "*.*"
+  funcName: countByIdGreaterThan
+
+- table: "*.*"
+  funcName: countByIdBetween
+
+- table: "*.*"
+  funcName: countByIdIn
